@@ -1,0 +1,7 @@
+# Cloudflare development environment variables
+# Copy this file to .dev.vars and fill in the values
+
+# VAPID keys for push notifications
+# Generate with: npx web-push generate-vapid-keys
+VAPID_PUBLIC_KEY=your_public_key_here
+VAPID_PRIVATE_KEY=your_private_key_here

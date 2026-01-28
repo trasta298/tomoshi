@@ -1,0 +1,31 @@
+name = "tomoshi"
+main = "src/server/index.ts"
+compatibility_date = "2025-01-29"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tomoshi-db"
+database_id = "local"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "sessions-kv"
+
+[[durable_objects.bindings]]
+name = "NOTIFICATION_SCHEDULER"
+class_name = "NotificationScheduler"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NotificationScheduler"]
+
+[vars]
+VAPID_SUBJECT = "mailto:admin@example.com"
+
+# Production secrets (set via wrangler secret put)
+# VAPID_PUBLIC_KEY
+# VAPID_PRIVATE_KEY
