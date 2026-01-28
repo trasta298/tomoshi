@@ -9,11 +9,11 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "tomoshi-db"
-database_id = "local"
+database_id = "25f47489-8a6b-4c12-911c-41a23b77d5a1"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "sessions-kv"
+id = "503cf8ec074f47468c244353634949c3"
 
 [[durable_objects.bindings]]
 name = "NOTIFICATION_SCHEDULER"
