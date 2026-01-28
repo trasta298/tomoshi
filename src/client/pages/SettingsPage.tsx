@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 import type { UserSettings, Habit } from '@shared/types'
 
 interface SettingsResponse {
@@ -22,6 +23,7 @@ interface HabitsResponse {
 export function SettingsPage() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall()
   const navigate = useNavigate()
 
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -157,6 +159,36 @@ export function SettingsPage() {
           ))}
         </div>
       </section>
+
+      {/* Install App */}
+      {!isInstalled && (isInstallable || isIOS) && (
+        <section className="card">
+          <h2 className="heading text-lg mb-3">アプリをインストール</h2>
+          {isIOS ? (
+            <div className="space-y-2">
+              <p style={{ color: 'var(--text-secondary)' }} className="text-sm">
+                ホーム画面に追加すると、アプリのように使えます
+              </p>
+              <div
+                className="p-3 rounded-xl text-sm"
+                style={{ background: 'var(--bg-primary)' }}
+              >
+                <p className="mb-1">1. 画面下の共有ボタン（📤）をタップ</p>
+                <p>2.「ホーム画面に追加」を選択</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p style={{ color: 'var(--text-secondary)' }} className="text-sm">
+                ホーム画面に追加して、オフラインでも使えるようにしましょう
+              </p>
+              <button onClick={install} className="button button--primary w-full">
+                📲 インストール
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Notifications */}
       <section className="card">
