@@ -76,6 +76,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', effectiveTheme)
+
+    // ステータスバーの色も更新
+    const themeColor = effectiveTheme === 'dark' ? '#252540' : '#FFDAD6'
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]:not([media])')
+      || document.querySelector('meta[name="theme-color"]')
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', themeColor)
+    }
   }, [effectiveTheme])
 
   const setTheme = (newTheme: Theme) => {
