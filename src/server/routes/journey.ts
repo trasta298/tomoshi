@@ -16,6 +16,11 @@ journeyRoutes.get('/today', async (c) => {
     .bind(userId)
     .first<DbUser>()
 
+  // Get user settings for character
+  const userSettings = await c.env.DB.prepare('SELECT character_id FROM user_settings WHERE user_id = ?')
+    .bind(userId)
+    .first<{ character_id: string }>()
+
   // Get today's tasks
   const tasksResult = await c.env.DB.prepare(
     'SELECT * FROM tasks WHERE user_id = ? AND date = ? ORDER BY created_at ASC'
@@ -121,7 +126,8 @@ journeyRoutes.get('/today', async (c) => {
       count: streakCount,
       shields: user?.streak_shields || 0,
       level: getFlameLevel(streakCount)
-    }
+    },
+    characterId: userSettings?.character_id || 'default'
   }
 
   return c.json({ success: true, data: todayData })

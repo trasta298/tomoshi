@@ -115,7 +115,9 @@ export interface TodayData {
     count: number
     shields: number
     level: 1 | 2 | 3 | 4 | 5
+    shieldConsumedAt?: number // シールドが消費された時刻（当日消費された場合のみ）
   }
+  characterId?: string // 選択されたキャラクターID
 }
 
 // Journey data (30 days)

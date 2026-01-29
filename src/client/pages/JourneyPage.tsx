@@ -20,11 +20,17 @@ interface DayDetailsResponse {
   }
 }
 
+interface SettingsResponse {
+  success: boolean
+  data?: { character_id: string }
+}
+
 export function JourneyPage() {
   const [data, setData] = useState<{
     journey: JourneyDay[]
     streakCount: number
     streakShields: number
+    characterId: string
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState<JourneyDay | null>(null)
@@ -32,18 +38,21 @@ export function JourneyPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [journeyRes, userRes] = await Promise.all([
+        const [journeyRes, userRes, settingsRes] = await Promise.all([
           fetch('/api/journey/history'),
-          fetch('/api/auth/me')
+          fetch('/api/auth/me'),
+          fetch('/api/settings')
         ])
         const journeyJson: JourneyResponse = await journeyRes.json()
         const userJson: UserResponse = await userRes.json()
+        const settingsJson: SettingsResponse = await settingsRes.json()
 
         if (journeyJson.success && userJson.success && journeyJson.data) {
           setData({
             journey: journeyJson.data,
             streakCount: userJson.user?.streak_count || 0,
-            streakShields: userJson.user?.streak_shields || 0
+            streakShields: userJson.user?.streak_shields || 0,
+            characterId: settingsJson.data?.character_id || 'default'
           })
         }
       } catch {
@@ -80,7 +89,12 @@ export function JourneyPage() {
       <h1 className="heading text-2xl">あしあと</h1>
 
       {/* Main journey view */}
-      <JourneyView streakCount={data.streakCount} streakShields={data.streakShields} />
+      <JourneyView
+        streakCount={data.streakCount}
+        streakShields={data.streakShields}
+        characterId={data.characterId}
+        journeyHistory={data.journey}
+      />
 
       {/* Calendar grid */}
       <section>
@@ -179,8 +193,11 @@ function DayDetailModal({ day, onClose }: DayDetailModalProps) {
           </div>
         ) : (
           <div className="text-center mb-4">
-            <span className="text-4xl">💤</span>
-            <p className="heading mt-2">お休みの日</p>
+            <span className="text-4xl">🌱</span>
+            <p className="heading mt-2">また歩き出そう</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              大丈夫、いつでも始められるよ
+            </p>
           </div>
         )}
 

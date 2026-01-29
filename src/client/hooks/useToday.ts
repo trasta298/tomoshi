@@ -7,6 +7,39 @@ interface ApiResponse<T = unknown> {
   error?: string
 }
 
+// 未完了タスク（前日以前）を取得
+export async function fetchPendingTasks(): Promise<Task[]> {
+  try {
+    const res = await fetch('/api/tasks/pending')
+    const json: ApiResponse<Task[]> = await res.json()
+    return json.success && json.data ? json.data : []
+  } catch {
+    return []
+  }
+}
+
+// タスクを今日に持ち越し
+export async function carryOverTask(taskId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/move-to-today`, { method: 'POST' })
+    const json: ApiResponse = await res.json()
+    return json.success
+  } catch {
+    return false
+  }
+}
+
+// タスクを削除
+export async function deletePendingTask(taskId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    const json: ApiResponse = await res.json()
+    return json.success
+  } catch {
+    return false
+  }
+}
+
 export function useToday() {
   const [data, setData] = useState<TodayData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,6 +106,25 @@ export function useToday() {
     if (json.success) {
       setData((prev) =>
         prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
+      )
+    }
+  }
+
+  const editTask = async (taskId: string, newTitle: string) => {
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle })
+    })
+    const json: ApiResponse<Task> = await res.json()
+    if (json.success && json.data) {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, title: newTitle } : t))
+            }
+          : null
       )
     }
   }
@@ -172,6 +224,7 @@ export function useToday() {
     addTask,
     toggleTask,
     deleteTask,
+    editTask,
     toggleHabitCheck,
     addMoya,
     deleteMoya,

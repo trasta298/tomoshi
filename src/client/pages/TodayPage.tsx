@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useToday } from '../hooks/useToday'
+import { useState, useEffect, useRef } from 'react'
+import { useToday, fetchPendingTasks } from '../hooks/useToday'
 import { useOnline } from '../components/OfflineBanner'
 import { MiniJourney } from '../components/JourneyView'
 import { TaskCard, EmptyTaskSlot } from '../components/TaskCard'
@@ -7,14 +7,79 @@ import { HabitCard } from '../components/HabitCard'
 import { MoyaList } from '../components/MoyaList'
 import { AddModal, FloatingButton } from '../components/AddModal'
 import { OfflineBanner } from '../components/OfflineBanner'
+import { PendingTasksModal } from '../components/PendingTasksModal'
+import { MonthlyGoalPrompt, shouldShowMonthlyGoalPrompt } from '../components/MonthlyGoalPrompt'
+import { ShieldToast } from '../components/ShieldToast'
+import { MilestoneToast } from '../components/MilestoneToast'
+import type { Task } from '@shared/types'
+
+// 紙吹雪コンポーネント
+function Confetti() {
+  const colors = ['#FFDAD6', '#D4F5E4', '#E8DEFF', '#FFF3D1', '#D6EFFF']
+  const pieces = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 0.5,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: 6 + Math.random() * 8
+  }))
+
+  return (
+    <div className="confetti-container">
+      {pieces.map((piece) => (
+        <div
+          key={piece.id}
+          className="confetti-piece"
+          style={{
+            left: `${piece.left}%`,
+            animationDelay: `${piece.delay}s`,
+            background: piece.color,
+            width: piece.size,
+            height: piece.size,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px'
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// 達成オーバーレイコンポーネント
+interface AchievementOverlayProps {
+  onClose: () => void
+}
+
+function AchievementOverlay({ onClose }: AchievementOverlayProps) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className="achievement-overlay" onClick={onClose}>
+      <div className="achievement-card" onClick={(e) => e.stopPropagation()}>
+        <div className="text-5xl mb-4">🎉</div>
+        <h2 className="heading text-xl mb-2">きょうの3つ達成！</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>すごい！おつかれさま</p>
+        <div className="mt-4 flex justify-center gap-1">
+          <span className="text-2xl">⭐</span>
+          <span className="text-2xl">⭐</span>
+          <span className="text-2xl">⭐</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function TodayPage() {
   const {
     data,
     loading,
+    refresh,
     addTask,
     toggleTask,
     deleteTask,
+    editTask,
     toggleHabitCheck,
     addMoya,
     deleteMoya,
@@ -23,7 +88,29 @@ export function TodayPage() {
   } = useToday()
 
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [showAchievement, setShowAchievement] = useState(false)
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([])
+  const [showPendingModal, setShowPendingModal] = useState(false)
+  const [showMonthlyGoalPrompt, setShowMonthlyGoalPrompt] = useState(() => shouldShowMonthlyGoalPrompt())
   const online = useOnline()
+
+  // 3つ達成済みかどうかを追跡
+  const prevAllCompletedRef = useRef(false)
+  const pendingCheckedRef = useRef(false)
+
+  // 未完了タスクの確認（初回のみ）
+  useEffect(() => {
+    if (pendingCheckedRef.current || !online) return
+    pendingCheckedRef.current = true
+
+    fetchPendingTasks().then((tasks) => {
+      if (tasks.length > 0) {
+        setPendingTasks(tasks)
+        setShowPendingModal(true)
+      }
+    })
+  }, [online])
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('ja-JP', {
@@ -31,6 +118,32 @@ export function TodayPage() {
     day: 'numeric',
     weekday: 'short'
   })
+
+  // 3つ達成時のエフェクト
+  useEffect(() => {
+    if (!data) return
+
+    const allTasksCompleted =
+      data.tasks.length === 3 && data.tasks.every((t) => t.completed)
+
+    // 前回は未達成で、今回達成した場合にエフェクトを表示
+    if (allTasksCompleted && !prevAllCompletedRef.current) {
+      setShowConfetti(true)
+      setShowAchievement(true)
+      setTimeout(() => setShowConfetti(false), 3000)
+    }
+
+    prevAllCompletedRef.current = allTasksCompleted
+  }, [data])
+
+  // タスク完了時の紙吹雪（個別）
+  const handleToggleTask = async (taskId: string, completed: boolean) => {
+    if (completed) {
+      setShowConfetti(true)
+      setTimeout(() => setShowConfetti(false), 1500)
+    }
+    await toggleTask(taskId, completed)
+  }
 
   if (loading) {
     return (
@@ -59,6 +172,20 @@ export function TodayPage() {
     <>
       <OfflineBanner />
 
+      {/* シールド消費メッセージ */}
+      <ShieldToast shieldConsumedAt={data.streak.shieldConsumedAt} />
+
+      {/* マイルストーン到達メッセージ */}
+      <MilestoneToast streakCount={data.streak.count} />
+
+      {/* 紙吹雪 */}
+      {showConfetti && <Confetti />}
+
+      {/* 達成オーバーレイ */}
+      {showAchievement && (
+        <AchievementOverlay onClose={() => setShowAchievement(false)} />
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -67,7 +194,7 @@ export function TodayPage() {
         </div>
 
         {/* Journey preview */}
-        <MiniJourney streakCount={data.streak.count} />
+        <MiniJourney streakCount={data.streak.count} characterId={data.characterId} />
 
         {/* Habits section */}
         {data.habits.length > 0 && (
@@ -98,8 +225,9 @@ export function TodayPage() {
               <TaskCard
                 key={task.id}
                 task={task}
-                onToggle={(completed) => online && toggleTask(task.id, completed)}
+                onToggle={(completed) => online && handleToggleTask(task.id, completed)}
                 onDelete={() => online && deleteTask(task.id)}
+                onEdit={(newTitle) => online && editTask(task.id, newTitle)}
               />
             ))}
 
@@ -121,6 +249,7 @@ export function TodayPage() {
             onDelete={(id) => online && deleteMoya(id)}
             onExtend={(id) => online && extendMoya(id)}
             onPromote={(id) => online && canAddTask && promoteMoya(id)}
+            canPromote={online && canAddTask}
           />
         </section>
       </div>
@@ -136,6 +265,26 @@ export function TodayPage() {
         onAddMoya={addMoya}
         canAddTask={canAddTask}
       />
+
+      {/* Pending tasks modal */}
+      {showPendingModal && pendingTasks.length > 0 && (
+        <PendingTasksModal
+          tasks={pendingTasks}
+          onComplete={() => {
+            setShowPendingModal(false)
+            refresh()
+          }}
+          canCarryOver={(additionalCount) => {
+            const currentTasks = data?.tasks.length || 0
+            return currentTasks + additionalCount <= 3
+          }}
+        />
+      )}
+
+      {/* Monthly goal prompt */}
+      {showMonthlyGoalPrompt && !showPendingModal && (
+        <MonthlyGoalPrompt onClose={() => setShowMonthlyGoalPrompt(false)} />
+      )}
     </>
   )
 }

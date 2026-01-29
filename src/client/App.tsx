@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { TodayPage } from './pages/TodayPage'
 import { JourneyPage } from './pages/JourneyPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { HabitEditPage } from './pages/HabitEditPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -58,6 +59,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <SettingsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/habits"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <HabitEditPage />
             </Layout>
           </ProtectedRoute>
         }

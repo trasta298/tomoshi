@@ -1,16 +1,30 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Task } from '@shared/types'
 
 interface TaskCardProps {
   task: Task
   onToggle: (completed: boolean) => void
   onDelete: () => void
+  onEdit?: (newTitle: string) => void
 }
 
-export function TaskCard({ task, onToggle, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
   const [animating, setAnimating] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(task.title)
+  const longPressTimer = useRef<number | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editing])
 
   const handleToggle = () => {
+    if (editing || showMenu) return
     if (!task.completed) {
       setAnimating(true)
       setTimeout(() => setAnimating(false), 400)
@@ -18,12 +32,87 @@ export function TaskCard({ task, onToggle, onDelete }: TaskCardProps) {
     onToggle(!task.completed)
   }
 
+  const handleTouchStart = () => {
+    longPressTimer.current = window.setTimeout(() => {
+      setShowMenu(true)
+    }, 500)
+  }
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  const handleEdit = () => {
+    setShowMenu(false)
+    setEditing(true)
+    setEditTitle(task.title)
+  }
+
+  const handleSaveEdit = () => {
+    if (editTitle.trim() && editTitle.trim() !== task.title && onEdit) {
+      onEdit(editTitle.trim())
+    }
+    setEditing(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditing(false)
+    setEditTitle(task.title)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit()
+    } else if (e.key === 'Escape') {
+      handleCancelEdit()
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="card flex items-center gap-3">
+        <input
+          ref={inputRef}
+          type="text"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSaveEdit}
+          maxLength={100}
+          className="flex-1 p-2 rounded-lg"
+          style={{ background: 'var(--bg-primary)' }}
+        />
+        <button
+          onClick={handleSaveEdit}
+          className="p-2"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          ✓
+        </button>
+        <button
+          onClick={handleCancelEdit}
+          className="p-2 opacity-50"
+        >
+          ×
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div
-      className={`card flex items-center gap-3 transition-all ${animating ? 'task-complete' : ''}`}
+      className={`card flex items-center gap-3 transition-all relative ${animating ? 'task-complete' : ''}`}
       style={{
         background: task.completed ? 'var(--mint)' : 'var(--bg-card)'
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleTouchStart}
+      onMouseUp={handleTouchEnd}
+      onMouseLeave={handleTouchEnd}
     >
       <button
         onClick={handleToggle}
@@ -45,7 +134,8 @@ export function TaskCard({ task, onToggle, onDelete }: TaskCardProps) {
       </button>
 
       <span
-        className="flex-1"
+        className="flex-1 cursor-pointer"
+        onClick={handleToggle}
         style={{
           textDecoration: task.completed ? 'line-through' : 'none',
           color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)'
@@ -55,22 +145,54 @@ export function TaskCard({ task, onToggle, onDelete }: TaskCardProps) {
       </span>
 
       <button
-        onClick={onDelete}
+        onClick={() => setShowMenu(!showMenu)}
         className="p-2 opacity-50 hover:opacity-100 transition-opacity"
-        aria-label="Delete task"
+        aria-label="More options"
       >
         <svg
           width="18"
           height="18"
           viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+          fill="currentColor"
         >
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="12" cy="19" r="2" />
         </svg>
       </button>
+
+      {/* Context menu */}
+      {showMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowMenu(false)}
+          />
+          <div
+            className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg overflow-hidden"
+            style={{ background: 'var(--bg-card)' }}
+          >
+            <button
+              onClick={handleEdit}
+              className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+            >
+              <span>✏️</span>
+              <span>編集</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowMenu(false)
+                onDelete()
+              }}
+              className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+              style={{ color: '#e57373' }}
+            >
+              <span>🗑️</span>
+              <span>削除</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -93,17 +215,7 @@ export function EmptyTaskSlot({ onClick, disabled }: EmptyTaskSlotProps) {
         cursor: disabled ? 'not-allowed' : 'pointer'
       }}
     >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
+      <span>＋</span>
       <span>タスクを追加</span>
     </button>
   )

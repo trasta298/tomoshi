@@ -15,6 +15,21 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+// 設計仕様: 22:00-6:00は自動でダークテーマ（夜の旅路モード）
+function isNightTime(): boolean {
+  const hour = new Date().getHours()
+  return hour >= 22 || hour < 6
+}
+
+function getAutoTheme(): 'light' | 'dark' {
+  // 夜時間帯は強制的にダーク
+  if (isNightTime()) {
+    return 'dark'
+  }
+  // それ以外はシステム設定に従う
+  return getSystemTheme()
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'light'
@@ -22,14 +37,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   })
 
   const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(() => {
-    if (theme === 'auto') return getSystemTheme()
+    if (theme === 'auto') return getAutoTheme()
     return theme
   })
 
   useEffect(() => {
     const updateEffectiveTheme = () => {
       if (theme === 'auto') {
-        setEffectiveTheme(getSystemTheme())
+        setEffectiveTheme(getAutoTheme())
       } else {
         setEffectiveTheme(theme)
       }
@@ -39,13 +54,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => {
+    const systemHandler = () => {
       if (theme === 'auto') {
-        setEffectiveTheme(getSystemTheme())
+        setEffectiveTheme(getAutoTheme())
       }
     }
-    mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
+    mediaQuery.addEventListener('change', systemHandler)
+
+    // 時間帯による自動切替のためのインターバル（1分ごとにチェック）
+    const intervalId = setInterval(() => {
+      if (theme === 'auto') {
+        setEffectiveTheme(getAutoTheme())
+      }
+    }, 60000)
+
+    return () => {
+      mediaQuery.removeEventListener('change', systemHandler)
+      clearInterval(intervalId)
+    }
   }, [theme])
 
   useEffect(() => {
