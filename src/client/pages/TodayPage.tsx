@@ -279,17 +279,16 @@ export function TodayPage() {
               />
             ))}
 
-            {/* Empty slots */}
-            {Array.from({ length: 3 - data.tasks.length }).map((_, i) => (
+            {/* Empty slot (show only one if tasks < 3) */}
+            {data.tasks.length < 3 && (
               <EmptyTaskSlot
-                key={`empty-${i}`}
                 onClick={() => {
                   setAddModalMode('task')
                   setShowAddModal(true)
                 }}
                 disabled={!online}
               />
-            ))}
+            )}
           </div>
         </section>
 

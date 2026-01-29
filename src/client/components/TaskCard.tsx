@@ -239,7 +239,7 @@ export function EmptyTaskSlot({ onClick, disabled }: EmptyTaskSlotProps) {
       }}
     >
       <span>＋</span>
-      <span>タスクを追加</span>
+      <span>やりたいこと</span>
     </button>
   )
 }
