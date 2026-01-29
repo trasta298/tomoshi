@@ -25,6 +25,9 @@ interface UserState {
   timezone: string
   notifications: ScheduledNotification[]
   lastUpdated: number
+  // Track which notifications were sent today to prevent duplicates
+  // Key: habitTimeId, Value: date string (YYYY-MM-DD)
+  sentToday?: Record<string, string>
 }
 
 // Tolerance window for alarm delays (in minutes)
@@ -176,20 +179,44 @@ export class NotificationScheduler extends DurableObject<Env> {
 
     const now = new Date()
 
-    // Get current time in user's timezone
-    const formatter = new Intl.DateTimeFormat('en-GB', {
+    // Get current date and time in user's timezone
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.state.timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    const timeFormatter = new Intl.DateTimeFormat('en-GB', {
       timeZone: this.state.timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
-    const currentTimeStr = formatter.format(now)
+    const todayStr = dateFormatter.format(now)
+    const currentTimeStr = timeFormatter.format(now)
     const [currentHour, currentMinute] = currentTimeStr.split(':').map(Number)
     const currentTotalMinutes = currentHour * 60 + currentMinute
+
+    // Initialize sentToday if not exists
+    if (!this.state.sentToday) {
+      this.state.sentToday = {}
+    }
+
+    // Clean up old entries (from previous days)
+    for (const [habitTimeId, sentDate] of Object.entries(this.state.sentToday)) {
+      if (sentDate !== todayStr) {
+        delete this.state.sentToday[habitTimeId]
+      }
+    }
 
     // Find notifications that should fire now (with tolerance window)
     // This handles Durable Object cold start delays and backpressure
     const toSend = this.state.notifications.filter((n) => {
+      // Skip if already sent today
+      if (this.state!.sentToday?.[n.habitTimeId] === todayStr) {
+        return false
+      }
+
       const [targetHour, targetMinute] = n.time.split(':').map(Number)
       const targetTotalMinutes = targetHour * 60 + targetMinute
 
@@ -202,10 +229,14 @@ export class NotificationScheduler extends DurableObject<Env> {
       return diff >= 0 && diff < ALARM_TOLERANCE_MINUTES
     })
 
-    // Send push notifications
+    // Send push notifications and mark as sent
     for (const notification of toSend) {
       await this.sendPushNotification(notification)
+      this.state.sentToday![notification.habitTimeId] = todayStr
     }
+
+    // Save state with updated sentToday
+    await this.ctx.storage.put('state', this.state)
 
     // Schedule next alarm
     await this.scheduleNextAlarm()
