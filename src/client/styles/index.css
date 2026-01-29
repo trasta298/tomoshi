@@ -884,3 +884,169 @@ textarea::placeholder {
   margin-right: -12px;
   pointer-events: none;
 }
+
+/* ========================================
+   Journey SVG Styles
+   旅路UIのSVGスタイル
+   ======================================== */
+
+/* 横スクロールコンテナ */
+.journey-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0;
+  margin: -8px 0;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 12px;
+}
+
+.journey-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.journey-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.journey-svg {
+  width: 720px;
+  min-width: 720px;
+  height: 100px;
+  display: block;
+}
+
+/* 道のパス（曲線） */
+.journey-road {
+  stroke: var(--text-secondary);
+  stroke-width: 3;
+  fill: none;
+  opacity: 0.2;
+  stroke-linecap: round;
+}
+
+/* 達成済みドット */
+.journey-dot-achieved {
+  fill: #f06292;
+}
+
+/* 未達成ドット */
+.journey-dot-pending {
+  fill: var(--text-secondary);
+  opacity: 0.25;
+}
+
+/* 現在位置のドットリング */
+.journey-dot-current-ring {
+  fill: rgba(240, 98, 146, 0.2);
+  stroke: #f06292;
+  stroke-width: 2;
+  animation: current-ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes current-ring-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* マイルストーン（達成済み） */
+.journey-milestone-reached {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+/* マイルストーン（未達成） */
+.journey-milestone-pending {
+  color: var(--text-secondary);
+  opacity: 0.35;
+}
+
+/* キャラクター（SVG text要素） */
+.journey-character-text {
+  /* キャラクター絵文字 */
+}
+
+/* ========================================
+   Mini Journey SVG Styles
+   ミニ旅路UIのSVGスタイル
+   ======================================== */
+
+.mini-journey-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ミニ版の道 */
+.mini-journey-road {
+  stroke: var(--text-secondary);
+  stroke-width: 1.5;
+  opacity: 0.2;
+  stroke-linecap: round;
+}
+
+/* ミニ版の達成済みドット */
+.mini-journey-dot-achieved {
+  fill: #f06292;
+}
+
+/* ミニ版の未達成ドット */
+.mini-journey-dot-pending {
+  fill: var(--text-secondary);
+  opacity: 0.3;
+}
+
+/* ミニ版の現在位置リング */
+.mini-journey-dot-current-ring {
+  fill: rgba(240, 98, 146, 0.15);
+  stroke: #f06292;
+  stroke-width: 1;
+  animation: mini-current-ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mini-current-ring-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ========================================
+   Journey ダークモード対応
+   ======================================== */
+
+[data-theme='dark'] .journey-scroll-container {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .journey-road {
+  opacity: 0.3;
+}
+
+[data-theme='dark'] .journey-dot-achieved {
+  fill: #f48fb1;
+  filter: drop-shadow(0 0 4px rgba(244, 143, 177, 0.5));
+}
+
+[data-theme='dark'] .journey-dot-current-ring {
+  fill: rgba(244, 143, 177, 0.15);
+  stroke: #f48fb1;
+}
+
+[data-theme='dark'] .journey-milestone-reached {
+  color: var(--text-primary);
+  filter: drop-shadow(0 0 3px rgba(240, 240, 240, 0.3));
+}
+
+[data-theme='dark'] .mini-journey-road {
+  opacity: 0.25;
+}
+
+[data-theme='dark'] .mini-journey-dot-achieved {
+  fill: #f48fb1;
+}
+
+[data-theme='dark'] .mini-journey-dot-current-ring {
+  fill: rgba(244, 143, 177, 0.1);
+  stroke: #f48fb1;
+}

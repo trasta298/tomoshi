@@ -5,6 +5,11 @@ interface MonthlyGoalPromptProps {
   onClose: () => void
 }
 
+interface GoalApiResponse {
+  success: boolean
+  data?: { monthly_goal?: string }
+}
+
 type PromptType = 'start' | 'end' | null
 
 function getPromptType(): PromptType {
@@ -48,7 +53,7 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
 
     // 目標を取得
     fetch('/api/settings/goal')
-      .then((res) => res.json())
+      .then((res) => res.json() as Promise<GoalApiResponse>)
       .then((json) => {
         if (json.success && json.data) {
           setCurrentGoal(json.data.monthly_goal || '')
