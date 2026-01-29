@@ -1,12 +1,5 @@
 import { Hono } from 'hono'
-import {
-  generateId,
-  getTodayDate,
-  getTomorrowDate,
-  getYesterdayDate,
-  calculateStreakUpdate,
-  type StreakUpdate
-} from '@shared/utils'
+import { generateId, getTodayDate, getTomorrowDate } from '@shared/utils'
 import type { Env, DbTask } from '../types'
 import type { Task } from '@shared/types'
 
@@ -94,6 +87,7 @@ tasksRoutes.post('/', async (c) => {
 })
 
 // Update task
+// ストリーク更新は /api/journey/log に集約されているため、ここではタスクの更新のみ行う
 tasksRoutes.patch('/:id', async (c) => {
   const { userId } = c.get('auth')
   const taskId = c.req.param('id')
@@ -148,99 +142,7 @@ tasksRoutes.patch('/:id', async (c) => {
     completed: !!updated!.completed
   }
 
-  // If task was completed, check if all 3 tasks are done and update streak
-  let streakUpdate: StreakUpdate | null = null
-  if (updates.completed === true) {
-    const taskDate = updated!.date
-    const today = getTodayDate()
-
-    // Only update streak for today's tasks
-    if (taskDate === today) {
-      // Count completed tasks for today
-      const completedCount = await c.env.DB.prepare(
-        'SELECT COUNT(*) as count FROM tasks WHERE user_id = ? AND date = ? AND completed = 1'
-      )
-        .bind(userId, today)
-        .first<{ count: number }>()
-
-      // If all 3 tasks are completed, update streak
-      if (completedCount && completedCount.count >= 3) {
-        // Get current user streak info
-        const user = await c.env.DB.prepare(
-          'SELECT streak_count, streak_shields FROM users WHERE id = ?'
-        )
-          .bind(userId)
-          .first<{ streak_count: number; streak_shields: number }>()
-
-        const currentStreak = user?.streak_count || 0
-        const currentShields = user?.streak_shields || 0
-
-        // Check if yesterday was achieved
-        const yesterday = getYesterdayDate()
-        const yesterdayLog = await c.env.DB.prepare(
-          'SELECT tasks_completed, habits_completed FROM daily_logs WHERE user_id = ? AND date = ?'
-        )
-          .bind(userId, yesterday)
-          .first<{ tasks_completed: number; habits_completed: number }>()
-
-        const yesterdayAchieved = yesterdayLog
-          ? yesterdayLog.tasks_completed >= 3 || yesterdayLog.habits_completed > 0
-          : false
-
-        // Calculate streak update
-        streakUpdate = calculateStreakUpdate(
-          currentStreak,
-          currentShields,
-          yesterdayAchieved,
-          true // todayAchieved is true since we have 3 completed tasks
-        )
-
-        // Update user's streak info
-        if (streakUpdate.shieldConsumed) {
-          await c.env.DB.prepare(
-            'UPDATE users SET streak_count = ?, streak_shields = ?, shield_consumed_at = ? WHERE id = ?'
-          )
-            .bind(
-              streakUpdate.newStreakCount,
-              streakUpdate.newShields,
-              streakUpdate.shieldConsumedAt,
-              userId
-            )
-            .run()
-        } else {
-          await c.env.DB.prepare(
-            'UPDATE users SET streak_count = ?, streak_shields = ? WHERE id = ?'
-          )
-            .bind(streakUpdate.newStreakCount, streakUpdate.newShields, userId)
-            .run()
-        }
-
-        // Also update the daily log
-        const logId = generateId()
-        const existingLog = await c.env.DB.prepare(
-          'SELECT id FROM daily_logs WHERE user_id = ? AND date = ?'
-        )
-          .bind(userId, today)
-          .first<{ id: string }>()
-
-        if (existingLog) {
-          await c.env.DB.prepare(
-            'UPDATE daily_logs SET tasks_completed = ? WHERE id = ?'
-          )
-            .bind(completedCount.count, existingLog.id)
-            .run()
-        } else {
-          await c.env.DB.prepare(
-            'INSERT INTO daily_logs (id, user_id, date, tasks_completed, habits_completed) VALUES (?, ?, ?, ?, 0)'
-          )
-            .bind(logId, userId, today, completedCount.count)
-            .run()
-        }
-      }
-    }
-  }
-
-  return c.json({ success: true, data: task, streakUpdate })
+  return c.json({ success: true, data: task })
 })
 
 // Delete task

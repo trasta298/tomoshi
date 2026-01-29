@@ -3,6 +3,7 @@ import { generateId, getTodayDate } from '@shared/utils'
 import type { Env, DbHabit, DbHabitTime, DbHabitCheck } from '../types'
 import type { Habit, HabitTime, HabitCheck, HabitTimeWithCheck } from '@shared/types'
 import { syncUserNotifications } from '../notification-sync'
+import { confirmPendingDays, updateDailyLog } from './journey'
 
 export const habitsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -95,6 +96,9 @@ habitsRoutes.post('/', async (c) => {
     return c.json({ success: false, error: 'Maximum 3 habits' }, 400)
   }
 
+  // 習慣追加「前」に過去の未確定日を確定（古い習慣設定でスナップショット）
+  await confirmPendingDays(c.env.DB, userId)
+
   const habitId = generateId()
   const now = Date.now()
 
@@ -130,6 +134,10 @@ habitsRoutes.post('/', async (c) => {
     created_at: now,
     times: createdTimes
   }
+
+  // 当日を新しい習慣設定で更新
+  const today = getTodayDate()
+  await updateDailyLog(c.env.DB, userId, today)
 
   // Durable Objectに通知スケジュールを同期
   await syncUserNotifications(c.env, userId)
@@ -178,6 +186,10 @@ habitsRoutes.patch('/:id', async (c) => {
     .bind(...values)
     .run()
 
+  // 当日のスナップショットを更新（タイトル/アイコンが変わる）
+  const today = getTodayDate()
+  await updateDailyLog(c.env.DB, userId, today)
+
   // タイトル変更時はDurable Objectに同期（通知メッセージに影響）
   if (updates.title !== undefined) {
     await syncUserNotifications(c.env, userId)
@@ -191,6 +203,9 @@ habitsRoutes.delete('/:id', async (c) => {
   const { userId } = c.get('auth')
   const habitId = c.req.param('id')
 
+  // 習慣削除「前」に過去の未確定日を確定（削除前の習慣設定でスナップショット）
+  await confirmPendingDays(c.env.DB, userId)
+
   const result = await c.env.DB.prepare('DELETE FROM habits WHERE id = ? AND user_id = ?')
     .bind(habitId, userId)
     .run()
@@ -198,6 +213,10 @@ habitsRoutes.delete('/:id', async (c) => {
   if (!result.meta.changes) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
+
+  // 当日を新しい習慣設定で更新
+  const today = getTodayDate()
+  await updateDailyLog(c.env.DB, userId, today)
 
   // Durable Objectに通知スケジュールを同期（削除した習慣の通知を除去）
   await syncUserNotifications(c.env, userId)
@@ -231,6 +250,9 @@ habitsRoutes.post('/:id/times', async (c) => {
     return c.json({ success: false, error: 'Maximum 5 times per habit' }, 400)
   }
 
+  // 時刻チップ追加「前」に過去の未確定日を確定
+  await confirmPendingDays(c.env.DB, userId)
+
   const timeId = generateId()
 
   await c.env.DB.prepare(
@@ -245,6 +267,10 @@ habitsRoutes.post('/:id/times', async (c) => {
     time,
     notification_enabled: true
   }
+
+  // 当日を新しい習慣設定で更新
+  const today = getTodayDate()
+  await updateDailyLog(c.env.DB, userId, today)
 
   // Durable Objectに通知スケジュールを同期
   await syncUserNotifications(c.env, userId)
@@ -294,6 +320,12 @@ habitsRoutes.patch('/:habitId/times/:timeId', async (c) => {
     .bind(...values)
     .run()
 
+  // 時刻変更時はスナップショットの時刻も更新（habits_totalは変わらないのでconfirmPendingDaysは不要）
+  if (updates.time !== undefined) {
+    const today = getTodayDate()
+    await updateDailyLog(c.env.DB, userId, today)
+  }
+
   // Durable Objectに通知スケジュールを同期
   await syncUserNotifications(c.env, userId)
 
@@ -326,9 +358,16 @@ habitsRoutes.delete('/:habitId/times/:timeId', async (c) => {
     return c.json({ success: false, error: 'Must have at least 1 time' }, 400)
   }
 
+  // 時刻チップ削除「前」に過去の未確定日を確定
+  await confirmPendingDays(c.env.DB, userId)
+
   await c.env.DB.prepare('DELETE FROM habit_times WHERE id = ? AND habit_id = ?')
     .bind(timeId, habitId)
     .run()
+
+  // 当日を新しい習慣設定で更新
+  const today = getTodayDate()
+  await updateDailyLog(c.env.DB, userId, today)
 
   // Durable Objectに通知スケジュールを同期
   await syncUserNotifications(c.env, userId)
@@ -364,15 +403,13 @@ habitsRoutes.post('/times/:timeId/check', async (c) => {
     .bind(timeId, checkDate)
     .first<DbHabitCheck>()
 
+  let checkData: HabitCheck
   if (existing) {
     await c.env.DB.prepare('UPDATE habit_checks SET completed = ? WHERE id = ?')
       .bind(completed ? 1 : 0, existing.id)
       .run()
 
-    return c.json({
-      success: true,
-      data: { ...existing, completed }
-    })
+    checkData = { ...existing, completed }
   } else {
     const checkId = generateId()
     await c.env.DB.prepare(
@@ -381,13 +418,16 @@ habitsRoutes.post('/times/:timeId/check', async (c) => {
       .bind(checkId, timeId, checkDate, completed ? 1 : 0)
       .run()
 
-    const check: HabitCheck = {
+    checkData = {
       id: checkId,
       habit_time_id: timeId,
       date: checkDate,
       completed
     }
-
-    return c.json({ success: true, data: check }, 201)
   }
+
+  // 習慣チェック後にdaily_logを更新（習慣設定は変わらないのでconfirmPendingDaysは不要）
+  await updateDailyLog(c.env.DB, userId, checkDate)
+
+  return c.json({ success: true, data: checkData }, existing ? 200 : 201)
 })

@@ -128,6 +128,17 @@ export interface JourneyDay {
   achieved: boolean
   tasks_completed: number
   habits_completed: number
+  tasks_total?: number
+  habits_total?: number
+}
+
+// Daily log habit snapshot (for history view)
+export interface DailyLogHabit {
+  id: string
+  habit_title: string
+  habit_icon: string | null
+  time: string
+  completed: boolean
 }
 
 // Flame level calculation

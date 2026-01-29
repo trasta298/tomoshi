@@ -24,6 +24,10 @@ export async function carryOverTask(taskId: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/tasks/${taskId}/move-to-today`, { method: 'POST' })
     const json: ApiResponse = await res.json()
+    if (json.success) {
+      // Update daily log (タスク移動でtasks_totalが変わるため)
+      await fetch('/api/journey/log', { method: 'POST' })
+    }
     return json.success
   } catch {
     return false
@@ -75,6 +79,8 @@ export function useToday() {
     const json: ApiResponse<Task> = await res.json()
     if (json.success && json.data) {
       setData((prev) => (prev ? { ...prev, tasks: [...prev.tasks, json.data!] } : null))
+      // Update daily log (タスク追加でtasks_totalが変わるため)
+      await fetch('/api/journey/log', { method: 'POST' })
       invalidate('today', 'journey')
       return json.data
     }
@@ -110,6 +116,8 @@ export function useToday() {
       setData((prev) =>
         prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
       )
+      // Update daily log (タスク削除でtasks_totalが変わるため)
+      await fetch('/api/journey/log', { method: 'POST' })
       invalidate('today', 'journey')
     }
   }
@@ -153,8 +161,7 @@ export function useToday() {
           }))
         }
       })
-      // Update daily log
-      await fetch('/api/journey/log', { method: 'POST' })
+      // バックエンド側でupdateDailyLogが呼ばれるため、ここでの呼び出しは不要
       invalidate('today', 'journey', 'user')
     }
   }
@@ -220,6 +227,8 @@ export function useToday() {
             }
           : null
       )
+      // Update daily log (タスク追加でtasks_totalが変わるため)
+      await fetch('/api/journey/log', { method: 'POST' })
       invalidate('today', 'journey')
       return json.data
     }
@@ -233,6 +242,8 @@ export function useToday() {
       setData((prev) =>
         prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
       )
+      // Update daily log (タスク移動でtasks_totalが変わるため)
+      await fetch('/api/journey/log', { method: 'POST' })
       invalidate('today', 'journey')
       return true
     }

@@ -76,6 +76,28 @@ export function getTomorrowDate(timezone = 'Asia/Tokyo'): string {
   return tomorrow.toLocaleDateString('sv-SE', { timeZone: timezone })
 }
 
+// Daily achievement calculation
+// 達成条件: タスク全完了 AND 習慣全完了 AND (タスクか習慣が1つ以上ある)
+export function isDayAchieved(
+  tasksTotal: number,
+  tasksCompleted: number,
+  habitsTotal: number,
+  habitsCompleted: number
+): boolean {
+  // どちらも0個の場合は未達成
+  if (tasksTotal === 0 && habitsTotal === 0) {
+    return false
+  }
+
+  // タスクが全完了かどうか（0個の場合はOK）
+  const tasksAllDone = tasksTotal === 0 || tasksCompleted >= tasksTotal
+
+  // 習慣が全完了かどうか（0個の場合はOK）
+  const habitsAllDone = habitsTotal === 0 || habitsCompleted >= habitsTotal
+
+  return tasksAllDone && habitsAllDone
+}
+
 // Streak calculation result
 export interface StreakUpdate {
   newStreakCount: number

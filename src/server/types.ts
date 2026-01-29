@@ -90,6 +90,20 @@ export interface DbDailyLog {
   date: string
   tasks_completed: number
   habits_completed: number
+  tasks_total: number
+  habits_total: number
+  achieved: number
+}
+
+export interface DbDailyLogHabit {
+  id: string
+  daily_log_id: string
+  habit_id: string | null
+  habit_time_id: string | null
+  habit_title: string
+  habit_icon: string | null
+  time: string
+  completed: number
 }
 
 export interface DbPushSubscription {
