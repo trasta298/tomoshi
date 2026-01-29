@@ -85,6 +85,8 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
           onKeyDown={handleKeyDown}
           onBlur={handleSaveEdit}
           maxLength={100}
+          autoComplete="off"
+          data-form-type="other"
           className="flex-1 p-2 rounded-lg"
           style={{ background: 'var(--bg-primary)' }}
         />

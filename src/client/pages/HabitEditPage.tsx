@@ -71,7 +71,7 @@ export function HabitEditPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/settings')}

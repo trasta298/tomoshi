@@ -98,6 +98,11 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask, in
             onChange={(e) => setValue(e.target.value)}
             placeholder={mode === 'task' ? '今日やることを入力...' : '気になることを入れておこう...'}
             maxLength={mode === 'task' ? 100 : 200}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-form-type="other"
             className="w-full p-4 rounded-2xl mb-4"
             style={{ background: 'var(--bg-primary)' }}
           />
