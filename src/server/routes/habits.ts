@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { generateId, getTodayDate } from '@shared/utils'
 import type { Env, DbHabit, DbHabitTime, DbHabitCheck } from '../types'
 import type { Habit, HabitTime, HabitCheck, HabitTimeWithCheck } from '@shared/types'
+import { syncUserNotifications } from '../notification-sync'
 
 export const habitsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -130,6 +131,9 @@ habitsRoutes.post('/', async (c) => {
     times: createdTimes
   }
 
+  // Durable Objectに通知スケジュールを同期
+  await syncUserNotifications(c.env, userId)
+
   return c.json({ success: true, data: habit }, 201)
 })
 
@@ -174,6 +178,11 @@ habitsRoutes.patch('/:id', async (c) => {
     .bind(...values)
     .run()
 
+  // タイトル変更時はDurable Objectに同期（通知メッセージに影響）
+  if (updates.title !== undefined) {
+    await syncUserNotifications(c.env, userId)
+  }
+
   return c.json({ success: true })
 })
 
@@ -189,6 +198,9 @@ habitsRoutes.delete('/:id', async (c) => {
   if (!result.meta.changes) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
+
+  // Durable Objectに通知スケジュールを同期（削除した習慣の通知を除去）
+  await syncUserNotifications(c.env, userId)
 
   return c.json({ success: true })
 })
@@ -233,6 +245,9 @@ habitsRoutes.post('/:id/times', async (c) => {
     time,
     notification_enabled: true
   }
+
+  // Durable Objectに通知スケジュールを同期
+  await syncUserNotifications(c.env, userId)
 
   return c.json({ success: true, data: habitTime }, 201)
 })
@@ -279,6 +294,9 @@ habitsRoutes.patch('/:habitId/times/:timeId', async (c) => {
     .bind(...values)
     .run()
 
+  // Durable Objectに通知スケジュールを同期
+  await syncUserNotifications(c.env, userId)
+
   return c.json({ success: true })
 })
 
@@ -311,6 +329,9 @@ habitsRoutes.delete('/:habitId/times/:timeId', async (c) => {
   await c.env.DB.prepare('DELETE FROM habit_times WHERE id = ? AND habit_id = ?')
     .bind(timeId, habitId)
     .run()
+
+  // Durable Objectに通知スケジュールを同期
+  await syncUserNotifications(c.env, userId)
 
   return c.json({ success: true })
 })

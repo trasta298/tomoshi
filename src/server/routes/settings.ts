@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { generateId } from '@shared/utils'
 import type { Env, DbUserSettings, DbUser, DbPushSubscription } from '../types'
 import type { UserSettings, PushSubscription } from '@shared/types'
+import { syncUserTimezone } from '../notification-sync'
 
 export const settingsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -84,6 +85,11 @@ settingsRoutes.patch('/', async (c) => {
   await c.env.DB.prepare(`UPDATE user_settings SET ${fields.join(', ')} WHERE user_id = ?`)
     .bind(...values)
     .run()
+
+  // タイムゾーン変更時はDurable Objectに同期
+  if (updates.timezone !== undefined) {
+    await syncUserTimezone(c.env, userId, updates.timezone)
+  }
 
   return c.json({ success: true })
 })

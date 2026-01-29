@@ -1,10 +1,10 @@
 name = "tomoshi"
 main = "src/server/index.ts"
 compatibility_date = "2025-01-29"
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
 not_found_handling = "single-page-application"
-compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
