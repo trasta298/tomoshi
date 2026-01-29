@@ -228,7 +228,6 @@ function HabitEditCard({ habit, onEdit, onDelete, onUpdate }: HabitEditCardProps
           <button
             onClick={onEdit}
             className="p-2 rounded-full"
-            style={{ background: 'var(--bg-primary)' }}
           >
             ✏️
           </button>
