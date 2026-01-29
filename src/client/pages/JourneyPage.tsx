@@ -113,27 +113,55 @@ export function JourneyPage() {
           ))}
 
           {/* Calendar cells */}
-          {data.journey.map((day) => {
-            const date = new Date(day.date)
-            const isToday =
-              day.date === new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+          {(() => {
+            // Calculate the day of week for the first date (0 = Sunday, 6 = Saturday)
+            const firstDate = new Date(data.journey[0].date + 'T00:00:00+09:00')
+            const firstDayOfWeek = firstDate.getDay()
 
-            return (
-              <button
-                key={day.date}
-                onClick={() => setSelectedDay(day)}
-                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-colors ${
-                  isToday ? 'ring-2 ring-[var(--coral)]' : ''
-                }`}
-                style={{
-                  background: day.achieved ? 'var(--coral)' : 'var(--bg-card)'
-                }}
-              >
-                <span>{date.getDate()}</span>
-                {day.achieved && <span className="text-[10px]">●</span>}
-              </button>
-            )
-          })}
+            // Generate padding cells for previous month dates
+            const paddingCells = []
+            for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+              const paddingDate = new Date(firstDate)
+              paddingDate.setDate(paddingDate.getDate() - (i + 1))
+              paddingCells.push(
+                <div
+                  key={`padding-${i}`}
+                  className="aspect-square rounded-lg flex flex-col items-center justify-center text-xs"
+                  style={{
+                    background: 'var(--bg-card)',
+                    opacity: 0.4
+                  }}
+                >
+                  <span>{paddingDate.getDate()}</span>
+                </div>
+              )
+            }
+
+            // Generate actual journey day cells
+            const dayCells = data.journey.map((day) => {
+              const date = new Date(day.date + 'T00:00:00+09:00')
+              const isToday =
+                day.date === new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+
+              return (
+                <button
+                  key={day.date}
+                  onClick={() => setSelectedDay(day)}
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-colors ${
+                    isToday ? 'ring-2 ring-[var(--coral)]' : ''
+                  }`}
+                  style={{
+                    background: day.achieved ? 'var(--coral)' : 'var(--bg-card)'
+                  }}
+                >
+                  <span>{date.getDate()}</span>
+                  {day.achieved && <span className="text-[10px]">●</span>}
+                </button>
+              )
+            })
+
+            return [...paddingCells, ...dayCells]
+          })()}
         </div>
       </section>
 
