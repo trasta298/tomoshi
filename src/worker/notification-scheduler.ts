@@ -241,11 +241,16 @@ export class NotificationScheduler extends DurableObject<Env> {
     }
 
     const messageData = JSON.stringify({
-      title: notification.habitTitle,
-      body: `${notification.time} の時間です`,
+      title: `${notification.habitTitle}の時間です`,
+      body: `${notification.time} - タップして記録しましょう`,
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
       tag: `habit-${notification.habitTimeId}`,
+      requireInteraction: true,
+      actions: [
+        { action: 'complete', title: '✓ 完了' },
+        { action: 'dismiss', title: 'あとで' }
+      ],
       data: {
         habitTimeId: notification.habitTimeId,
         url: '/'

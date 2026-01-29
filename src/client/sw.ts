@@ -87,7 +87,9 @@ self.addEventListener('push', (event) => {
     icon: data.icon || '/icons/icon-192.png',
     badge: data.badge || '/icons/badge-72.png',
     tag: data.tag,
-    data: data.data
+    data: data.data,
+    actions: data.actions,
+    requireInteraction: data.requireInteraction
   }
 
   event.waitUntil(self.registration.showNotification(data.title, options))
@@ -101,17 +103,24 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data
 
   if (action === 'complete' && data?.habitTimeId) {
-    // Mark habit as complete via API
+    // Mark habit as complete via API (don't open app)
     event.waitUntil(
       fetch(`/api/habits/times/${data.habitTimeId}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: true })
+        body: JSON.stringify({ completed: true }),
+        credentials: 'include'
       })
     )
+    return
   }
 
-  // Open the app
+  if (action === 'dismiss') {
+    // Just close notification, don't open app
+    return
+  }
+
+  // Tapping notification body opens the app
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clients) => {
       // Focus existing window if available
