@@ -380,9 +380,17 @@ export class NotificationScheduler extends DurableObject<Env> {
         if (!this.state) {
           this.state = (await this.ctx.storage.get<UserState>('state')) || null
         }
-        return new Response(JSON.stringify({ success: true, state: this.state }), {
-          headers: { 'Content-Type': 'application/json' }
-        })
+        const alarm = await this.ctx.storage.getAlarm()
+        return new Response(
+          JSON.stringify({
+            success: true,
+            state: this.state,
+            alarm: alarm ? new Date(alarm).toISOString() : null
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
       }
 
       return new Response(JSON.stringify({ error: 'Not found' }), {
