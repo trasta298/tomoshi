@@ -192,6 +192,11 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
           onChange={(e) => setNewGoal(e.target.value)}
           placeholder="今月達成したいことを1つ..."
           maxLength={100}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-form-type="other"
           className="w-full p-3 rounded-xl mb-4"
           style={{ background: 'var(--bg-primary)' }}
           autoFocus

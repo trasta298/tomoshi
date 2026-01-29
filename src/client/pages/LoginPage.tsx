@@ -65,6 +65,11 @@ export function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="ユーザー名を入力"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-form-type="other"
                 className="w-full p-4 rounded-2xl"
                 style={{ background: 'var(--bg-card)' }}
                 minLength={2}

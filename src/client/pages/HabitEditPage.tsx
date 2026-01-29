@@ -271,6 +271,8 @@ function HabitEditCard({ habit, onEdit, onDelete, onUpdate }: HabitEditCardProps
             type="time"
             value={newTime}
             onChange={(e) => setNewTime(e.target.value)}
+            autoComplete="off"
+            data-form-type="other"
             className="p-2 rounded-lg"
             style={{ background: 'var(--bg-primary)' }}
           />
@@ -316,6 +318,8 @@ function TimeChipEditable({ time, onDelete, onUpdate, onToggleNotification }: Ti
           type="time"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
+          autoComplete="off"
+          data-form-type="other"
           className="p-1 rounded text-sm"
           style={{ background: 'var(--bg-primary)' }}
           autoFocus
@@ -425,6 +429,11 @@ function AddHabitModal({ onClose, onSuccess }: AddHabitModalProps) {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="例: くすり"
             maxLength={50}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-form-type="other"
             className="w-full p-3 rounded-xl"
             style={{ background: 'var(--bg-primary)' }}
           />
@@ -464,6 +473,8 @@ function AddHabitModal({ onClose, onSuccess }: AddHabitModalProps) {
                   type="time"
                   value={time}
                   onChange={(e) => handleUpdateTime(index, e.target.value)}
+                  autoComplete="off"
+                  data-form-type="other"
                   className="p-2 rounded-lg text-sm"
                   style={{ background: 'var(--bg-primary)' }}
                 />
@@ -575,6 +586,11 @@ function EditHabitModal({ habit, onClose, onSuccess }: EditHabitModalProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={50}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-form-type="other"
             className="w-full p-3 rounded-xl"
             style={{ background: 'var(--bg-primary)' }}
           />
