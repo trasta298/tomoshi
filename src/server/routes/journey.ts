@@ -146,82 +146,22 @@ export async function confirmPendingDays(db: D1Database, userId: string): Promis
   const today = getTodayDate()
   const days = getLastNDays(30)
 
-  // 既存のdaily_logsを取得
+  // 既存のdaily_logsの日付を取得
   const existingLogs = await db
-    .prepare(
-      `SELECT dl.date, dl.id, dl.tasks_total, dl.tasks_completed, dl.habits_total, dl.habits_completed,
-              (SELECT COUNT(*) FROM daily_log_habits dlh WHERE dlh.daily_log_id = dl.id) as snapshot_count
-       FROM daily_logs dl
-       WHERE dl.user_id = ? AND dl.date >= ?`
-    )
+    .prepare('SELECT date FROM daily_logs WHERE user_id = ? AND date >= ?')
     .bind(userId, days[0])
-    .all<{
-      date: string
-      id: string
-      tasks_total: number
-      tasks_completed: number
-      habits_total: number
-      habits_completed: number
-      snapshot_count: number
-    }>()
+    .all<{ date: string }>()
 
-  const logMap = new Map<
-    string,
-    {
-      id: string
-      tasks_total: number
-      tasks_completed: number
-      habits_total: number
-      habits_completed: number
-      snapshot_count: number
-    }
-  >()
-  for (const log of existingLogs.results || []) {
-    logMap.set(log.date, {
-      id: log.id,
-      tasks_total: log.tasks_total,
-      tasks_completed: log.tasks_completed,
-      habits_total: log.habits_total,
-      habits_completed: log.habits_completed,
-      snapshot_count: log.snapshot_count
-    })
-  }
+  const existingDates = new Set((existingLogs.results || []).map((l) => l.date))
 
-  // 未確定日を特定:
-  // - daily_logsがない日
-  // - daily_logsはあるが未移行（旧データ）：
-  //   - snapshot_count=0 かつ (tasks_completed > 0 なのに tasks_total=0) または (habits_completed > 0 なのに habits_total=0)
-  const pendingDates: string[] = []
-  for (const date of days) {
-    if (date === today) continue // 当日は除外
+  // 未確定日を特定: daily_logsがない日（当日は除外）
+  const pendingDates = days.filter((date) => date !== today && !existingDates.has(date))
 
-    const log = logMap.get(date)
-    if (!log) {
-      // daily_logsがない → 未確定
-      pendingDates.push(date)
-    } else if (log.snapshot_count === 0) {
-      // snapshot_countが0の場合、旧データかどうかを判定
-      // 旧データ: completed > 0 なのに total = 0（新カラムが未設定）
-      const isLegacyData =
-        (log.tasks_completed > 0 && log.tasks_total === 0) ||
-        (log.habits_completed > 0 && log.habits_total === 0)
-
-      if (isLegacyData) {
-        // 未移行の旧データ → 再計算対象
-        pendingDates.push(date)
-      }
-      // isLegacyData が false の場合は確定済み（習慣0個の正当ケース）
-    }
-    // snapshot_countが1以上なら確定済み（スキップ）
-  }
-
-  // 未確定日がなければ早期リターン
   if (pendingDates.length === 0) {
     return
   }
 
   // 未確定日を全て確定（現在のhabit_timesでスナップショット）
-  // 並列化で効率化
   await Promise.all(pendingDates.map((date) => updateDailyLog(db, userId, date)))
 }
 
@@ -341,14 +281,8 @@ journeyRoutes.get('/today', async (c) => {
   const shieldConsumedAt = user?.shield_consumed_at || undefined
 
   // Get last active date (most recent day with achievement)
-  // 旧データ（achieved未設定）も考慮: achieved=1 または 旧データで活動があった日
   const lastActiveLog = await c.env.DB.prepare(
-    `SELECT date FROM daily_logs
-     WHERE user_id = ? AND (
-       achieved = 1 OR
-       (tasks_total = 0 AND (tasks_completed > 0 OR habits_completed > 0))
-     )
-     ORDER BY date DESC LIMIT 1`
+    'SELECT date FROM daily_logs WHERE user_id = ? AND achieved = 1 ORDER BY date DESC LIMIT 1'
   )
     .bind(userId)
     .first<{ date: string }>()
@@ -394,24 +328,9 @@ journeyRoutes.get('/history', async (c) => {
   const journey: JourneyDay[] = days.map((date) => {
     const log = logsMap.get(date)
     if (log) {
-      // 旧データ判定: completed > 0 なのに total = 0 の場合は未移行
-      const isLegacyData =
-        (log.tasks_completed > 0 && log.tasks_total === 0) ||
-        (log.habits_completed > 0 && log.habits_total === 0)
-
-      // 旧データの場合は従来のロジックでachievedを計算（フォールバック）
-      const achieved = isLegacyData
-        ? isDayAchieved(
-            log.tasks_completed, // 旧データではtotalが不明なのでcompletedで代用
-            log.tasks_completed,
-            log.habits_completed,
-            log.habits_completed
-          )
-        : !!log.achieved
-
       return {
         date,
-        achieved,
+        achieved: !!log.achieved,
         tasks_completed: log.tasks_completed,
         habits_completed: log.habits_completed,
         tasks_total: log.tasks_total,
@@ -470,38 +389,6 @@ journeyRoutes.get('/day/:date', async (c) => {
       time: h.time,
       completed: !!h.completed
     }))
-  }
-
-  // daily_log_habitsが空の場合、フォールバックとして従来のhabit_checksから取得
-  // （移行期間中のため）
-  if (habitChecks.length === 0) {
-    const checksResult = await c.env.DB.prepare(
-      `SELECT hc.*, ht.time, h.title, h.icon
-       FROM habit_checks hc
-       JOIN habit_times ht ON hc.habit_time_id = ht.id
-       JOIN habits h ON ht.habit_id = h.id
-       WHERE h.user_id = ? AND hc.date = ?
-       ORDER BY ht.time ASC`
-    )
-      .bind(userId, date)
-      .all()
-
-    habitChecks = (checksResult.results || []).map((c) => {
-      const check = c as {
-        id: string
-        completed: number
-        time: string
-        title: string
-        icon: string | null
-      }
-      return {
-        id: check.id,
-        title: check.title,
-        icon: check.icon,
-        time: check.time,
-        completed: !!check.completed
-      }
-    })
   }
 
   return c.json({
