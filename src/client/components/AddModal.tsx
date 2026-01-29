@@ -44,7 +44,8 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: 
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl p-6 animate-fade-in safe-bottom"
+        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl p-6 animate-fade-in"
+        style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Mode tabs */}
@@ -78,7 +79,7 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: 
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={mode === 'task' ? '今日やることを入力...' : '気になることを入力...'}
+            placeholder={mode === 'task' ? '今日やることを入力...' : '気になることを入れておこう...'}
             maxLength={mode === 'task' ? 100 : 200}
             className="w-full p-4 rounded-2xl mb-4"
             style={{ background: 'var(--bg-primary)' }}

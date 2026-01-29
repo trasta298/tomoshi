@@ -20,6 +20,18 @@ interface HabitsResponse {
   data?: Habit[]
 }
 
+// 選択可能なキャラクター
+const CHARACTERS = [
+  { id: 'default', emoji: '🚶', name: 'たびびと' },
+  { id: 'runner', emoji: '🏃', name: 'はしる' },
+  { id: 'hiker', emoji: '🧗', name: 'やまのぼり' },
+  { id: 'dancer', emoji: '💃', name: 'おどる' },
+  { id: 'wizard', emoji: '🧙', name: 'まほうつかい' },
+  { id: 'ninja', emoji: '🥷', name: 'にんじゃ' },
+  { id: 'astronaut', emoji: '🧑‍🚀', name: 'うちゅう' },
+  { id: 'robot', emoji: '🤖', name: 'ロボット' }
+]
+
 export function SettingsPage() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -80,6 +92,15 @@ export function SettingsPage() {
     })
   }
 
+  const handleCharacterChange = async (characterId: string) => {
+    setSettings((s) => (s ? { ...s, character_id: characterId } : s))
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character_id: characterId })
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -134,10 +155,33 @@ export function SettingsPage() {
         )}
         <button
           onClick={() => navigate('/settings/habits')}
-          className="button button--secondary w-full mt-3"
+          className="w-full mt-3 py-3 rounded-full text-sm"
+          style={{ background: 'var(--bg-primary)' }}
         >
           習慣を編集
         </button>
+      </section>
+
+      {/* Character selection */}
+      <section className="card">
+        <h2 className="heading text-lg mb-3">キャラクター</h2>
+        <div className="grid grid-cols-4 gap-3">
+          {CHARACTERS.map((char) => (
+            <button
+              key={char.id}
+              onClick={() => handleCharacterChange(char.id)}
+              className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${
+                settings?.character_id === char.id ? 'ring-2 ring-[var(--coral)]' : ''
+              }`}
+              style={{ background: 'var(--bg-primary)' }}
+            >
+              <span className="text-2xl">{char.emoji}</span>
+              <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                {char.name}
+              </span>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Theme */}
@@ -148,9 +192,11 @@ export function SettingsPage() {
             <button
               key={t}
               onClick={() => handleThemeChange(t)}
-              className={`flex-1 py-2 rounded-xl text-sm transition-colors ${
-                theme === t ? 'bg-[var(--coral)]' : 'bg-[var(--bg-primary)]'
-              }`}
+              className="flex-1 py-2 rounded-xl text-sm transition-colors"
+              style={{
+                background: theme === t ? 'var(--coral)' : 'var(--bg-primary)',
+                color: theme === t ? '#3d3d3d' : 'var(--text-primary)'
+              }}
             >
               {t === 'light' && '☀️ ライト'}
               {t === 'dark' && '🌙 ダーク'}

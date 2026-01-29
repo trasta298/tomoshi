@@ -1,19 +1,58 @@
 import { useState } from 'react'
 import type { Moya } from '@shared/types'
-import { getMoyaOpacity } from '@shared/types'
+
+// 設計仕様に合わせた透明度計算
+function getMoyaOpacity(createdAt: number, extendedAt: number | null): number {
+  const baseTime = extendedAt ?? createdAt
+  const daysPassed = Math.floor((Date.now() - baseTime) / (1000 * 60 * 60 * 24))
+
+  if (daysPassed <= 7) return 1      // 0-7日: 通常表示
+  if (daysPassed <= 14) return 0.7   // 8-14日: 少し薄く
+  if (daysPassed <= 21) return 0.4   // 15-21日: さらに薄く
+  return 0.2                          // 22日以降: 消える直前
+}
+
+// 経過日数を取得
+function getDaysPassed(createdAt: number, extendedAt: number | null): number {
+  const baseTime = extendedAt ?? createdAt
+  return Math.floor((Date.now() - baseTime) / (1000 * 60 * 60 * 24))
+}
+
+// 30日以上経過したものをフィルタリング（自動非表示）
+function filterExpiredMoyas(moyas: Moya[]): Moya[] {
+  return moyas.filter((moya) => {
+    const daysPassed = getDaysPassed(moya.created_at, moya.extended_at)
+    return daysPassed < 30
+  })
+}
 
 interface MoyaListProps {
   moyas: Moya[]
   onDelete: (id: string) => void
   onExtend: (id: string) => void
   onPromote: (id: string) => void
+  canPromote?: boolean
 }
 
-export function MoyaList({ moyas, onDelete, onExtend, onPromote }: MoyaListProps) {
+export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true }: MoyaListProps) {
   const [collapsed, setCollapsed] = useState(false)
 
-  if (moyas.length === 0) {
-    return null
+  // 30日以上経過したものを非表示
+  const activeMoyas = filterExpiredMoyas(moyas)
+
+  if (activeMoyas.length === 0) {
+    return (
+      <div>
+        <h2 className="heading text-lg mb-3 flex items-center gap-2">
+          もやもや
+        </h2>
+        <div className="text-center py-6 rounded-2xl moya-empty">
+          <p style={{ color: 'var(--text-secondary)' }}>
+            気になることを入れておこう
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -37,13 +76,14 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote }: MoyaListProps
 
       {!collapsed && (
         <div className="space-y-2">
-          {moyas.map((moya) => (
+          {activeMoyas.map((moya) => (
             <MoyaItem
               key={moya.id}
               moya={moya}
               onDelete={() => onDelete(moya.id)}
               onExtend={() => onExtend(moya.id)}
               onPromote={() => onPromote(moya.id)}
+              canPromote={canPromote}
             />
           ))}
         </div>
@@ -57,21 +97,42 @@ interface MoyaItemProps {
   onDelete: () => void
   onExtend: () => void
   onPromote: () => void
+  canPromote: boolean
 }
 
-function MoyaItem({ moya, onDelete, onExtend, onPromote }: MoyaItemProps) {
+function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote }: MoyaItemProps) {
   const [showActions, setShowActions] = useState(false)
   const opacity = getMoyaOpacity(moya.created_at, moya.extended_at)
-  const isExpiring = opacity <= 0.4
+  const daysPassed = getDaysPassed(moya.created_at, moya.extended_at)
+
+  // 22日以降は延長ボタンを表示（設計仕様）
+  const isExpiring = daysPassed >= 22
+
+  // タップで即座に昇格（設計仕様: ワンタップで昇格）
+  const handleTap = () => {
+    if (canPromote) {
+      onPromote()
+    } else {
+      setShowActions(!showActions)
+    }
+  }
 
   return (
     <div
-      className="card card--lavender flex items-center gap-3 relative"
+      className="card card--lavender flex items-center gap-3 relative cursor-pointer"
       style={{ opacity }}
-      onClick={() => setShowActions(!showActions)}
+      onClick={handleTap}
     >
+      {/* 昇格可能時は↑アイコン表示 */}
+      {canPromote && (
+        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          ↑
+        </span>
+      )}
+
       <span className="flex-1">{moya.content}</span>
 
+      {/* 22日以降は延長ボタン表示 */}
       {isExpiring && (
         <button
           onClick={(e) => {
@@ -80,57 +141,33 @@ function MoyaItem({ moya, onDelete, onExtend, onPromote }: MoyaItemProps) {
           }}
           className="text-xs px-2 py-1 rounded-full"
           style={{ background: 'var(--lemon)' }}
+          title="14日延長"
         >
           延長
         </button>
       )}
 
-      {showActions && (
-        <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onPromote()
-            }}
-            className="p-2 rounded-full"
-            style={{ background: 'var(--coral)' }}
-            title="今日のタスクに追加"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <line x1="12" y1="19" x2="12" y2="5" />
-              <polyline points="5 12 12 5 19 12" />
-            </svg>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            className="p-2 rounded-full opacity-50"
-            title="削除"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-      )}
+      {/* 削除ボタン（常に表示） */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onDelete()
+        }}
+        className="p-1 opacity-30 hover:opacity-100 transition-opacity"
+        title="削除"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
     </div>
   )
 }

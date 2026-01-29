@@ -7,8 +7,8 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen pb-20">
-      <main className="max-w-lg mx-auto px-4 py-4 safe-top">{children}</main>
+    <div className="min-h-screen pb-24">
+      <main className="max-w-lg mx-auto px-4 pt-12 pb-4 safe-top">{children}</main>
       <BottomNav />
     </div>
   )

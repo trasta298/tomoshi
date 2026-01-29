@@ -31,6 +31,34 @@
   --lavender: #b8a5e0;
   --lemon: #e0c87a;
   --sky: #8ac0e0;
+
+  /* 夜の旅路モード: 松明の光 */
+  --flame-glow: #ffd700;
+}
+
+/* 夜の旅路モード: 松明グロー効果 */
+[data-theme='dark'] .flame-glow {
+  text-shadow: 0 0 10px var(--flame-glow), 0 0 20px var(--flame-glow), 0 0 30px rgba(255, 215, 0, 0.5);
+  animation: flame-flicker 2s ease-in-out infinite;
+}
+
+@keyframes flame-flicker {
+  0%, 100% {
+    text-shadow: 0 0 10px var(--flame-glow), 0 0 20px var(--flame-glow), 0 0 30px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 15px var(--flame-glow), 0 0 25px var(--flame-glow), 0 0 40px rgba(255, 215, 0, 0.6);
+  }
+}
+
+/* 夜モード: カードの照明グラデーション */
+[data-theme='dark'] .card {
+  background: linear-gradient(
+    135deg,
+    rgba(50, 50, 80, 0.9) 0%,
+    var(--bg-card) 50%,
+    rgba(40, 40, 65, 0.95) 100%
+  );
 }
 
 * {
@@ -93,6 +121,15 @@ h3,
   background: var(--sky);
 }
 
+/* Empty state for moya list - 控えめに存在を示す */
+.moya-empty {
+  background: #f3f0eb;
+}
+
+[data-theme='dark'] .moya-empty {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* Button styles */
 .button {
   border-radius: 9999px;
@@ -143,12 +180,83 @@ h3,
 /* Animations */
 @keyframes confetti {
   0% {
-    transform: translateY(0) rotate(0);
+    transform: translateY(0) rotate(0) scale(1);
     opacity: 1;
   }
   100% {
-    transform: translateY(-100px) rotate(360deg);
+    transform: translateY(-100px) rotate(360deg) scale(0.5);
     opacity: 0;
+  }
+}
+
+/* Confetti container */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 3s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Achievement overlay */
+.achievement-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  animation: overlay-fade-in 0.3s ease-out;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.achievement-card {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 32px 48px;
+  text-align: center;
+  animation: achievement-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes achievement-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -279,6 +387,26 @@ textarea {
   padding: 12px 16px;
 }
 
+/* Time input dark mode fix */
+[data-theme='dark'] input[type='time'],
+[data-theme='dark'] input[type='date'] {
+  color-scheme: dark;
+}
+
+[data-theme='dark'] input[type='time']::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  opacity: 1;
+}
+
+/* Firefox dark mode */
+@-moz-document url-prefix() {
+  [data-theme='dark'] input[type='time'],
+  [data-theme='dark'] input[type='date'] {
+    color-scheme: dark;
+  }
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--text-secondary);
@@ -297,6 +425,18 @@ textarea::placeholder {
   padding: 8px 0;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0));
   z-index: 100;
+}
+
+/* Extend background below safe area */
+.bottom-nav::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom, 0);
+  background: var(--bg-card);
+  transform: translateY(100%);
 }
 
 .bottom-nav-item {
