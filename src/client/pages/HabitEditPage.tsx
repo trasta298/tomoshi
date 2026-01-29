@@ -104,7 +104,7 @@ export function HabitEditPage() {
             style={{ borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }}
           >
             <span>＋</span>
-            <span>習慣を追加</span>
+            <span>つづけたいこと</span>
           </button>
         ) : (
           <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
