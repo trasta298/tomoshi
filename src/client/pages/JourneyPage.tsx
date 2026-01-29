@@ -93,7 +93,6 @@ export function JourneyPage() {
         streakCount={data.streakCount}
         streakShields={data.streakShields}
         characterId={data.characterId}
-        journeyHistory={data.journey}
       />
 
       {/* Calendar grid */}

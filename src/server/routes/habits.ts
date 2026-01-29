@@ -1,9 +1,80 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { generateId, getTodayDate } from '@shared/utils'
 import type { Env, DbHabit, DbHabitTime, DbHabitCheck } from '../types'
 import type { Habit, HabitTime, HabitCheck, HabitTimeWithCheck } from '@shared/types'
 import { syncUserNotifications } from '../notification-sync'
 import { confirmPendingDays, updateDailyLog } from './journey'
+
+type HabitContext = Context<{ Bindings: Env }>
+
+// Helper: Convert DB habit time to domain type
+function toHabitTime(dbTime: DbHabitTime): HabitTime {
+  return {
+    id: dbTime.id,
+    habit_id: dbTime.habit_id,
+    time: dbTime.time,
+    notification_enabled: !!dbTime.notification_enabled
+  }
+}
+
+// Helper: Convert DB habit check to domain type
+function toHabitCheck(dbCheck: DbHabitCheck): HabitCheck {
+  return {
+    id: dbCheck.id,
+    habit_time_id: dbCheck.habit_time_id,
+    date: dbCheck.date,
+    completed: !!dbCheck.completed
+  }
+}
+
+// Helper: Convert DB habit to domain type
+function toHabit(dbHabit: DbHabit): Habit {
+  return {
+    id: dbHabit.id,
+    user_id: dbHabit.user_id,
+    title: dbHabit.title,
+    icon: dbHabit.icon,
+    created_at: dbHabit.created_at
+  }
+}
+
+// Helper: Verify habit ownership and return habit if found
+async function getHabitIfOwned(
+  db: D1Database,
+  habitId: string,
+  userId: string
+): Promise<DbHabit | null> {
+  return db
+    .prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?')
+    .bind(habitId, userId)
+    .first<DbHabit>()
+}
+
+// Helper: Count records with a condition
+async function getCount(
+  db: D1Database,
+  table: string,
+  column: string,
+  value: string
+): Promise<number> {
+  const result = await db
+    .prepare(`SELECT COUNT(*) as count FROM ${table} WHERE ${column} = ?`)
+    .bind(value)
+    .first<{ count: number }>()
+  return result?.count ?? 0
+}
+
+// Helper: Sync notifications and update daily log after habit changes
+async function syncAfterHabitChange(
+  c: HabitContext,
+  userId: string,
+  date?: string
+): Promise<void> {
+  const targetDate = date ?? getTodayDate()
+  await updateDailyLog(c.env.DB, userId, targetDate)
+  await syncUserNotifications(c.env, userId)
+}
 
 export const habitsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -12,7 +83,6 @@ habitsRoutes.get('/', async (c) => {
   const { userId } = c.get('auth')
   const date = c.req.query('date') || getTodayDate()
 
-  // Get habits
   const habits = await c.env.DB.prepare(
     'SELECT * FROM habits WHERE user_id = ? ORDER BY created_at ASC'
   )
@@ -22,7 +92,6 @@ habitsRoutes.get('/', async (c) => {
   const result: (Habit & { times: HabitTimeWithCheck[] })[] = []
 
   for (const habit of habits.results || []) {
-    // Get times for this habit
     const times = await c.env.DB.prepare(
       'SELECT * FROM habit_times WHERE habit_id = ? ORDER BY time ASC'
     )
@@ -32,7 +101,6 @@ habitsRoutes.get('/', async (c) => {
     const timesWithChecks: HabitTimeWithCheck[] = []
 
     for (const time of times.results || []) {
-      // Get check for this time and date
       const check = await c.env.DB.prepare(
         'SELECT * FROM habit_checks WHERE habit_time_id = ? AND date = ?'
       )
@@ -40,27 +108,13 @@ habitsRoutes.get('/', async (c) => {
         .first<DbHabitCheck>()
 
       timesWithChecks.push({
-        id: time.id,
-        habit_id: time.habit_id,
-        time: time.time,
-        notification_enabled: !!time.notification_enabled,
-        check: check
-          ? {
-              id: check.id,
-              habit_time_id: check.habit_time_id,
-              date: check.date,
-              completed: !!check.completed
-            }
-          : undefined
+        ...toHabitTime(time),
+        check: check ? toHabitCheck(check) : undefined
       })
     }
 
     result.push({
-      id: habit.id,
-      user_id: habit.user_id,
-      title: habit.title,
-      icon: habit.icon,
-      created_at: habit.created_at,
+      ...toHabit(habit),
       times: timesWithChecks
     })
   }
@@ -85,14 +139,8 @@ habitsRoutes.post('/', async (c) => {
     return c.json({ success: false, error: 'Must have 1-5 times' }, 400)
   }
 
-  // Check max 3 habits
-  const countResult = await c.env.DB.prepare(
-    'SELECT COUNT(*) as count FROM habits WHERE user_id = ?'
-  )
-    .bind(userId)
-    .first<{ count: number }>()
-
-  if (countResult && countResult.count >= 3) {
+  const habitCount = await getCount(c.env.DB, 'habits', 'user_id', userId)
+  if (habitCount >= 3) {
     return c.json({ success: false, error: 'Maximum 3 habits' }, 400)
   }
 
@@ -108,7 +156,6 @@ habitsRoutes.post('/', async (c) => {
     .bind(habitId, userId, title, icon || null, now)
     .run()
 
-  // Create times
   const createdTimes: HabitTime[] = []
   for (const time of times) {
     const timeId = generateId()
@@ -135,12 +182,7 @@ habitsRoutes.post('/', async (c) => {
     times: createdTimes
   }
 
-  // 当日を新しい習慣設定で更新
-  const today = getTodayDate()
-  await updateDailyLog(c.env.DB, userId, today)
-
-  // Durable Objectに通知スケジュールを同期
-  await syncUserNotifications(c.env, userId)
+  await syncAfterHabitChange(c, userId)
 
   return c.json({ success: true, data: habit }, 201)
 })
@@ -151,11 +193,7 @@ habitsRoutes.patch('/:id', async (c) => {
   const habitId = c.req.param('id')
   const updates = await c.req.json<{ title?: string; icon?: string }>()
 
-  // Verify ownership
-  const existing = await c.env.DB.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?')
-    .bind(habitId, userId)
-    .first<DbHabit>()
-
+  const existing = await getHabitIfOwned(c.env.DB, habitId, userId)
   if (!existing) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
@@ -187,8 +225,7 @@ habitsRoutes.patch('/:id', async (c) => {
     .run()
 
   // 当日のスナップショットを更新（タイトル/アイコンが変わる）
-  const today = getTodayDate()
-  await updateDailyLog(c.env.DB, userId, today)
+  await updateDailyLog(c.env.DB, userId, getTodayDate())
 
   // タイトル変更時はDurable Objectに同期（通知メッセージに影響）
   if (updates.title !== undefined) {
@@ -214,12 +251,7 @@ habitsRoutes.delete('/:id', async (c) => {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
 
-  // 当日を新しい習慣設定で更新
-  const today = getTodayDate()
-  await updateDailyLog(c.env.DB, userId, today)
-
-  // Durable Objectに通知スケジュールを同期（削除した習慣の通知を除去）
-  await syncUserNotifications(c.env, userId)
+  await syncAfterHabitChange(c, userId)
 
   return c.json({ success: true })
 })
@@ -230,23 +262,13 @@ habitsRoutes.post('/:id/times', async (c) => {
   const habitId = c.req.param('id')
   const { time } = await c.req.json<{ time: string }>()
 
-  // Verify ownership
-  const habit = await c.env.DB.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?')
-    .bind(habitId, userId)
-    .first<DbHabit>()
-
+  const habit = await getHabitIfOwned(c.env.DB, habitId, userId)
   if (!habit) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
 
-  // Check max 5 times
-  const countResult = await c.env.DB.prepare(
-    'SELECT COUNT(*) as count FROM habit_times WHERE habit_id = ?'
-  )
-    .bind(habitId)
-    .first<{ count: number }>()
-
-  if (countResult && countResult.count >= 5) {
+  const timeCount = await getCount(c.env.DB, 'habit_times', 'habit_id', habitId)
+  if (timeCount >= 5) {
     return c.json({ success: false, error: 'Maximum 5 times per habit' }, 400)
   }
 
@@ -268,12 +290,7 @@ habitsRoutes.post('/:id/times', async (c) => {
     notification_enabled: true
   }
 
-  // 当日を新しい習慣設定で更新
-  const today = getTodayDate()
-  await updateDailyLog(c.env.DB, userId, today)
-
-  // Durable Objectに通知スケジュールを同期
-  await syncUserNotifications(c.env, userId)
+  await syncAfterHabitChange(c, userId)
 
   return c.json({ success: true, data: habitTime }, 201)
 })
@@ -285,11 +302,7 @@ habitsRoutes.patch('/:habitId/times/:timeId', async (c) => {
   const timeId = c.req.param('timeId')
   const updates = await c.req.json<{ time?: string; notification_enabled?: boolean }>()
 
-  // Verify ownership
-  const habit = await c.env.DB.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?')
-    .bind(habitId, userId)
-    .first<DbHabit>()
-
+  const habit = await getHabitIfOwned(c.env.DB, habitId, userId)
   if (!habit) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
@@ -322,8 +335,7 @@ habitsRoutes.patch('/:habitId/times/:timeId', async (c) => {
 
   // 時刻変更時はスナップショットの時刻も更新（habits_totalは変わらないのでconfirmPendingDaysは不要）
   if (updates.time !== undefined) {
-    const today = getTodayDate()
-    await updateDailyLog(c.env.DB, userId, today)
+    await updateDailyLog(c.env.DB, userId, getTodayDate())
   }
 
   // Durable Objectに通知スケジュールを同期
@@ -338,23 +350,13 @@ habitsRoutes.delete('/:habitId/times/:timeId', async (c) => {
   const habitId = c.req.param('habitId')
   const timeId = c.req.param('timeId')
 
-  // Verify ownership
-  const habit = await c.env.DB.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?')
-    .bind(habitId, userId)
-    .first<DbHabit>()
-
+  const habit = await getHabitIfOwned(c.env.DB, habitId, userId)
   if (!habit) {
     return c.json({ success: false, error: 'Habit not found' }, 404)
   }
 
-  // Check at least 1 time remains
-  const countResult = await c.env.DB.prepare(
-    'SELECT COUNT(*) as count FROM habit_times WHERE habit_id = ?'
-  )
-    .bind(habitId)
-    .first<{ count: number }>()
-
-  if (countResult && countResult.count <= 1) {
+  const timeCount = await getCount(c.env.DB, 'habit_times', 'habit_id', habitId)
+  if (timeCount <= 1) {
     return c.json({ success: false, error: 'Must have at least 1 time' }, 400)
   }
 
@@ -365,12 +367,7 @@ habitsRoutes.delete('/:habitId/times/:timeId', async (c) => {
     .bind(timeId, habitId)
     .run()
 
-  // 当日を新しい習慣設定で更新
-  const today = getTodayDate()
-  await updateDailyLog(c.env.DB, userId, today)
-
-  // Durable Objectに通知スケジュールを同期
-  await syncUserNotifications(c.env, userId)
+  await syncAfterHabitChange(c, userId)
 
   return c.json({ success: true })
 })
@@ -396,7 +393,6 @@ habitsRoutes.post('/times/:timeId/check', async (c) => {
     return c.json({ success: false, error: 'Time not found' }, 404)
   }
 
-  // Check if record exists
   const existing = await c.env.DB.prepare(
     'SELECT * FROM habit_checks WHERE habit_time_id = ? AND date = ?'
   )
@@ -409,7 +405,7 @@ habitsRoutes.post('/times/:timeId/check', async (c) => {
       .bind(completed ? 1 : 0, existing.id)
       .run()
 
-    checkData = { ...existing, completed }
+    checkData = { ...toHabitCheck(existing), completed }
   } else {
     const checkId = generateId()
     await c.env.DB.prepare(
