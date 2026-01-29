@@ -101,6 +101,10 @@ export function TodayPage() {
   const [showMonthlyGoalPrompt, setShowMonthlyGoalPrompt] = useState(() => shouldShowMonthlyGoalPrompt())
   const online = useOnline()
 
+  // 昇格アニメーション用: 昇格中のmoyaIdと新しく追加されたタスクID
+  const [promotingMoyaId, setPromotingMoyaId] = useState<string | null>(null)
+  const [newlyPromotedTaskId, setNewlyPromotedTaskId] = useState<string | null>(null)
+
   // 3つ達成済みかどうかを追跡
   const prevAllCompletedRef = useRef(false)
   const pendingCheckedRef = useRef(false)
@@ -149,6 +153,26 @@ export function TodayPage() {
       setTimeout(() => setShowConfetti(false), 1500)
     }
     await toggleTask(taskId, completed)
+  }
+
+  // フェードアニメーション付きのもやもや昇格
+  const handlePromoteMoya = async (moyaId: string) => {
+    // 昇格開始（フェードアウト開始）
+    setPromotingMoyaId(moyaId)
+
+    // フェードアウトアニメーションを待つ
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    // API呼び出し
+    const newTask = await promoteMoya(moyaId)
+
+    setPromotingMoyaId(null)
+
+    if (newTask) {
+      // 新しいタスクのフェードインアニメーション
+      setNewlyPromotedTaskId(newTask.id)
+      setTimeout(() => setNewlyPromotedTaskId(null), 400)
+    }
   }
 
   if (loading) {
@@ -251,6 +275,7 @@ export function TodayPage() {
                 onDelete={() => online && deleteTask(task.id)}
                 onEdit={(newTitle) => online && editTask(task.id, newTitle)}
                 onMoveToTomorrow={online ? () => moveToTomorrow(task.id) : undefined}
+                isNewlyPromoted={task.id === newlyPromotedTaskId}
               />
             ))}
 
@@ -274,8 +299,9 @@ export function TodayPage() {
             moyas={data.moyas}
             onDelete={(id) => online && deleteMoya(id)}
             onExtend={(id) => online && extendMoya(id)}
-            onPromote={(id) => online && canAddTask && promoteMoya(id)}
+            onPromote={(id) => online && canAddTask && handlePromoteMoya(id)}
             canPromote={online && canAddTask}
+            promotingMoyaId={promotingMoyaId}
             onAdd={online ? () => {
               setAddModalMode('moya')
               setShowAddModal(true)

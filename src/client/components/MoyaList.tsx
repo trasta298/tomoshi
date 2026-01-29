@@ -32,10 +32,11 @@ interface MoyaListProps {
   onExtend: (id: string) => void
   onPromote: (id: string) => void
   canPromote?: boolean
+  promotingMoyaId?: string | null
   onAdd?: () => void
 }
 
-export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true, onAdd }: MoyaListProps) {
+export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true, promotingMoyaId, onAdd }: MoyaListProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   // 30日以上経過したものを非表示
@@ -89,6 +90,7 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
               onExtend={() => onExtend(moya.id)}
               onPromote={() => onPromote(moya.id)}
               canPromote={canPromote}
+              isPromoting={moya.id === promotingMoyaId}
             />
           ))}
           {/* 追加ボタン */}
@@ -116,9 +118,10 @@ interface MoyaItemProps {
   onExtend: () => void
   onPromote: () => void
   canPromote: boolean
+  isPromoting?: boolean
 }
 
-function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote }: MoyaItemProps) {
+function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote, isPromoting }: MoyaItemProps) {
   const [showActions, setShowActions] = useState(false)
   const opacity = getMoyaOpacity(moya.created_at, moya.extended_at)
   const daysPassed = getDaysPassed(moya.created_at, moya.extended_at)
@@ -137,16 +140,26 @@ function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote }: MoyaItemP
 
   return (
     <div
-      className="card flex items-center gap-3 relative cursor-pointer"
-      style={{ opacity }}
+      className={`card flex items-center gap-3 relative cursor-pointer ${isPromoting ? 'promote-fade-out' : ''}`}
+      style={{ opacity: isPromoting ? undefined : opacity }}
       onClick={handleTap}
     >
-      {/* 昇格可能時は↑アイコン表示 */}
-      {canPromote && (
-        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          ↑
-        </span>
-      )}
+      {/* 昇格可能時は↑アイコン表示（アニメーション付き） */}
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--text-secondary)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`moya-arrow ${canPromote ? 'moya-arrow--visible' : 'moya-arrow--hidden'}`}
+        style={{ marginTop: 2 }}
+      >
+        <path d="M12 19V5" />
+        <path d="M5 12l7-7 7 7" />
+      </svg>
 
       <span className="flex-1">{moya.content}</span>
 

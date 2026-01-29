@@ -8,9 +8,10 @@ interface TaskCardProps {
   onDelete: () => void
   onEdit?: (newTitle: string) => void
   onMoveToTomorrow?: () => void
+  isNewlyPromoted?: boolean
 }
 
-export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow }: TaskCardProps) {
+export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, isNewlyPromoted }: TaskCardProps) {
   const [animating, setAnimating] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -106,7 +107,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow }:
 
   return (
     <div
-      className={`card flex items-center gap-3 transition-all relative ${animating ? 'task-complete' : ''}`}
+      className={`card flex items-center gap-3 transition-all relative ${animating ? 'task-complete' : ''} ${isNewlyPromoted ? 'promote-fade-in' : ''}`}
       style={{
         background: task.completed ? 'var(--mint)' : 'var(--bg-card)'
       }}
