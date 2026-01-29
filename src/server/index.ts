@@ -34,11 +34,7 @@ app.get('/api/health', (c) => c.json({ status: 'ok' }))
 
 // 404 for API routes
 app.notFound((c) => {
-  if (c.req.path.startsWith('/api/')) {
-    return c.json({ success: false, error: 'Not found' }, 404)
-  }
-  // Let Vite handle non-API routes (SPA)
-  return c.text('Not found', 404)
+  return c.json({ success: false, error: 'Not found' }, 404)
 })
 
 // Error handling

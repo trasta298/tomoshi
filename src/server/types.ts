@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database
   SESSIONS: KVNamespace
   NOTIFICATION_SCHEDULER: DurableObjectNamespace
+  ASSETS: Fetcher
   VAPID_SUBJECT: string
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string
