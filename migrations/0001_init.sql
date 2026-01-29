@@ -74,10 +74,11 @@ CREATE TABLE IF NOT EXISTS moyas (
 CREATE TABLE IF NOT EXISTS daily_logs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  date TEXT NOT NULL UNIQUE,
+  date TEXT NOT NULL,
   tasks_completed INTEGER DEFAULT 0,
   habits_completed INTEGER DEFAULT 0,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, date)
 );
 
 -- ユーザー設定
