@@ -1,4 +1,10 @@
 import { DurableObject } from 'cloudflare:workers'
+import {
+  buildPushPayload,
+  type PushSubscription,
+  type PushMessage,
+  type VapidKeys
+} from '@block65/webcrypto-web-push'
 
 interface Env {
   DB: D1Database
@@ -10,7 +16,7 @@ interface Env {
 interface ScheduledNotification {
   habitTimeId: string
   habitTitle: string
-  time: string
+  time: string // HH:MM format in user's timezone
   userId: string
 }
 
@@ -20,6 +26,9 @@ interface UserState {
   notifications: ScheduledNotification[]
   lastUpdated: number
 }
+
+// Tolerance window for alarm delays (in minutes)
+const ALARM_TOLERANCE_MINUTES = 5
 
 export class NotificationScheduler extends DurableObject<Env> {
   private state: UserState | null = null
@@ -68,46 +77,93 @@ export class NotificationScheduler extends DurableObject<Env> {
     await this.scheduleNextAlarm()
   }
 
-  private async scheduleNextAlarm(): Promise<void> {
-    if (!this.state || this.state.notifications.length === 0) {
-      return
-    }
-
+  /**
+   * Calculate UTC timestamp for a given local time in the user's timezone.
+   * This correctly handles timezone conversion by computing the offset.
+   */
+  private getNextAlarmTimeUTC(time: string, timezone: string): number {
     const now = new Date()
-    const todayStr = now.toLocaleDateString('sv-SE', { timeZone: this.state.timezone })
-    const currentTimeStr = now.toLocaleTimeString('en-GB', {
-      timeZone: this.state.timezone,
+    const [hours, minutes] = time.split(':').map(Number)
+
+    // Get current time in user's timezone using Intl.DateTimeFormat
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
 
-    // Find next notification time
-    let nextTime: Date | null = null
+    const parts = formatter.formatToParts(now)
+    const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '0'
+
+    const localYear = parseInt(getPart('year'))
+    const localMonth = parseInt(getPart('month')) - 1 // 0-indexed
+    const localDay = parseInt(getPart('day'))
+    const localHour = parseInt(getPart('hour'))
+    const localMinute = parseInt(getPart('minute'))
+
+    // Create target date in user's local timezone
+    // We'll calculate this by finding the offset between local and UTC
+    const localNowMinutes = localHour * 60 + localMinute
+    const targetMinutes = hours * 60 + minutes
+
+    // Start with today's date
+    let targetDay = localDay
+    let targetMonth = localMonth
+    let targetYear = localYear
+
+    // If target time has passed today, move to tomorrow
+    if (targetMinutes <= localNowMinutes) {
+      // Add one day, handling month/year rollover
+      const tempDate = new Date(Date.UTC(localYear, localMonth, localDay + 1))
+      targetYear = tempDate.getUTCFullYear()
+      targetMonth = tempDate.getUTCMonth()
+      targetDay = tempDate.getUTCDate()
+    }
+
+    // Create a reference date in UTC that represents the same wall clock time
+    // in the target timezone
+    const targetLocalDateStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}T${time}:00`
+
+    // Use a trick: create date at midnight UTC, then adjust
+    // Get timezone offset at target date by comparing UTC to local representation
+    const refDate = new Date(`${targetLocalDateStr}Z`) // Treat as UTC first
+    const localAtRef = new Date(
+      refDate.toLocaleString('en-US', { timeZone: timezone })
+    )
+    const utcAtRef = new Date(refDate.toLocaleString('en-US', { timeZone: 'UTC' }))
+    const offsetMs = utcAtRef.getTime() - localAtRef.getTime()
+
+    // The actual UTC time is: local time + offset
+    return refDate.getTime() + offsetMs
+  }
+
+  private async scheduleNextAlarm(): Promise<void> {
+    if (!this.state || this.state.notifications.length === 0) {
+      await this.ctx.storage.deleteAlarm()
+      return
+    }
+
+    const now = Date.now()
+    let nextAlarmTime: number | null = null
 
     for (const notification of this.state.notifications) {
-      const notifTime = notification.time
+      const alarmTime = this.getNextAlarmTimeUTC(notification.time, this.state.timezone)
 
-      // Calculate the next occurrence
-      let targetDate = new Date(`${todayStr}T${notifTime}:00`)
-
-      // Convert to user's timezone
-      const targetStr = targetDate.toLocaleString('en-GB', {
-        timeZone: this.state.timezone
-      })
-
-      // If the time has passed today, schedule for tomorrow
-      if (notifTime <= currentTimeStr) {
-        targetDate = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
-      }
-
-      if (!nextTime || targetDate < nextTime) {
-        nextTime = targetDate
+      if (!nextAlarmTime || alarmTime < nextAlarmTime) {
+        nextAlarmTime = alarmTime
       }
     }
 
-    if (nextTime) {
-      await this.ctx.storage.setAlarm(nextTime.getTime())
+    if (nextAlarmTime) {
+      // Ensure we don't schedule in the past
+      if (nextAlarmTime <= now) {
+        nextAlarmTime = now + 60 * 1000 // Schedule 1 minute from now
+      }
+      await this.ctx.storage.setAlarm(nextAlarmTime)
     }
   }
 
@@ -119,15 +175,32 @@ export class NotificationScheduler extends DurableObject<Env> {
     }
 
     const now = new Date()
-    const currentTimeStr = now.toLocaleTimeString('en-GB', {
+
+    // Get current time in user's timezone
+    const formatter = new Intl.DateTimeFormat('en-GB', {
       timeZone: this.state.timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
+    const currentTimeStr = formatter.format(now)
+    const [currentHour, currentMinute] = currentTimeStr.split(':').map(Number)
+    const currentTotalMinutes = currentHour * 60 + currentMinute
 
-    // Find notifications that should fire now
-    const toSend = this.state.notifications.filter((n) => n.time === currentTimeStr)
+    // Find notifications that should fire now (with tolerance window)
+    // This handles Durable Object cold start delays and backpressure
+    const toSend = this.state.notifications.filter((n) => {
+      const [targetHour, targetMinute] = n.time.split(':').map(Number)
+      const targetTotalMinutes = targetHour * 60 + targetMinute
+
+      // Calculate difference (handle midnight crossing)
+      let diff = currentTotalMinutes - targetTotalMinutes
+      if (diff < -720) diff += 1440 // Crossed midnight forward
+      if (diff > 720) diff -= 1440 // Crossed midnight backward
+
+      // Send if current time is within tolerance window after target time
+      return diff >= 0 && diff < ALARM_TOLERANCE_MINUTES
+    })
 
     // Send push notifications
     for (const notification of toSend) {
@@ -140,26 +213,34 @@ export class NotificationScheduler extends DurableObject<Env> {
 
   private async sendPushNotification(notification: ScheduledNotification): Promise<void> {
     if (!this.env.VAPID_PUBLIC_KEY || !this.env.VAPID_PRIVATE_KEY) {
-      console.log('Push notifications not configured')
+      console.log('Push notifications not configured: VAPID keys missing')
       return
     }
 
     // Get user's push subscriptions from D1
     const subscriptions = await this.env.DB.prepare(
-      'SELECT * FROM push_subscriptions WHERE user_id = ?'
+      'SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?'
     )
       .bind(notification.userId)
       .all<{
+        id: string
         endpoint: string
         p256dh: string
         auth: string
       }>()
 
     if (!subscriptions.results || subscriptions.results.length === 0) {
+      console.log(`No push subscriptions found for user ${notification.userId}`)
       return
     }
 
-    const payload = JSON.stringify({
+    const vapid: VapidKeys = {
+      subject: this.env.VAPID_SUBJECT,
+      publicKey: this.env.VAPID_PUBLIC_KEY,
+      privateKey: this.env.VAPID_PRIVATE_KEY
+    }
+
+    const messageData = JSON.stringify({
       title: notification.habitTitle,
       body: `${notification.time} の時間です`,
       icon: '/icons/icon-192.png',
@@ -171,13 +252,60 @@ export class NotificationScheduler extends DurableObject<Env> {
       }
     })
 
-    // Note: In production, use webcrypto-web-push library
-    // For now, just log the notification
-    console.log('Would send push notification:', {
-      userId: notification.userId,
-      payload,
-      subscriptionCount: subscriptions.results.length
-    })
+    const message: PushMessage = {
+      data: messageData,
+      options: {
+        ttl: 3600 // 1 hour
+      }
+    }
+
+    // Send to all subscriptions
+    const expiredSubscriptionIds: string[] = []
+
+    for (const sub of subscriptions.results) {
+      const subscription: PushSubscription = {
+        endpoint: sub.endpoint,
+        expirationTime: null,
+        keys: {
+          p256dh: sub.p256dh,
+          auth: sub.auth
+        }
+      }
+
+      try {
+        const payload = await buildPushPayload(message, subscription, vapid)
+        const response = await fetch(subscription.endpoint, {
+          method: payload.method,
+          headers: payload.headers,
+          body: payload.body
+        } as RequestInit)
+
+        if (response.status === 404 || response.status === 410) {
+          // Subscription has expired or been unsubscribed
+          console.log(`Push subscription expired: ${sub.id}`)
+          expiredSubscriptionIds.push(sub.id)
+        } else if (!response.ok) {
+          console.error(`Push notification failed: ${response.status} ${response.statusText}`)
+        } else {
+          console.log(`Push notification sent successfully to subscription ${sub.id}`)
+        }
+      } catch (error) {
+        console.error(`Error sending push notification to ${sub.id}:`, error)
+      }
+    }
+
+    // Clean up expired subscriptions
+    if (expiredSubscriptionIds.length > 0) {
+      try {
+        const placeholders = expiredSubscriptionIds.map(() => '?').join(',')
+        await this.env.DB.prepare(`DELETE FROM push_subscriptions WHERE id IN (${placeholders})`)
+          .bind(...expiredSubscriptionIds)
+          .run()
+        console.log(`Deleted ${expiredSubscriptionIds.length} expired push subscriptions`)
+      } catch (error) {
+        console.error('Error deleting expired subscriptions:', error)
+      }
+    }
   }
 
   // HTTP handler for RPC calls

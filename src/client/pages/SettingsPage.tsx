@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
 import { usePWAInstall } from '../hooks/usePWAInstall'
+import { usePushNotification } from '../hooks/usePushNotification'
 import type { UserSettings, Habit } from '@shared/types'
 
 interface SettingsResponse {
@@ -36,6 +37,15 @@ export function SettingsPage() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall()
+  const {
+    isSupported: isPushSupported,
+    permission: pushPermission,
+    isSubscribed: isPushSubscribed,
+    isLoading: isPushLoading,
+    error: pushError,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush
+  } = usePushNotification()
   const navigate = useNavigate()
 
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -239,49 +249,87 @@ export function SettingsPage() {
       {/* Notifications */}
       <section className="card">
         <h2 className="heading text-lg mb-3">通知</h2>
-        <div className="flex items-center justify-between">
-          <span>プッシュ通知</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings?.notify_enabled ?? true}
-              onChange={async (e) => {
-                const enabled = e.target.checked
-                setSettings((s) => (s ? { ...s, notify_enabled: enabled } : s))
 
-                if (enabled) {
-                  // Request notification permission
-                  const permission = await Notification.requestPermission()
-                  if (permission === 'granted') {
-                    // Register push subscription
-                    // This would require service worker registration
-                  }
-                }
+        {!isPushSupported ? (
+          <p style={{ color: 'var(--text-secondary)' }} className="text-sm">
+            このブラウザはプッシュ通知に対応していません
+          </p>
+        ) : pushPermission === 'denied' ? (
+          <div className="space-y-2">
+            <p style={{ color: 'var(--text-secondary)' }} className="text-sm">
+              通知がブロックされています
+            </p>
+            <p style={{ color: 'var(--text-secondary)' }} className="text-xs">
+              ブラウザの設定から通知を許可してください
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span>プッシュ通知</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPushSubscribed}
+                  disabled={isPushLoading}
+                  onChange={async (e) => {
+                    const enabled = e.target.checked
 
-                await fetch('/api/settings', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ notify_enabled: enabled })
-                })
-              }}
-              className="sr-only"
-            />
-            <div
-              className="w-11 h-6 rounded-full transition-colors"
-              style={{
-                background: settings?.notify_enabled ? 'var(--coral)' : 'var(--text-secondary)'
-              }}
-            >
-              <div
-                className="w-5 h-5 rounded-full bg-white shadow transition-transform"
-                style={{
-                  transform: settings?.notify_enabled ? 'translateX(22px)' : 'translateX(2px)',
-                  marginTop: '2px'
-                }}
-              />
+                    if (enabled) {
+                      const success = await subscribePush()
+                      if (success) {
+                        setSettings((s) => (s ? { ...s, notify_enabled: true } : s))
+                        await fetch('/api/settings', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ notify_enabled: true })
+                        })
+                      }
+                    } else {
+                      const success = await unsubscribePush()
+                      if (success) {
+                        setSettings((s) => (s ? { ...s, notify_enabled: false } : s))
+                        await fetch('/api/settings', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ notify_enabled: false })
+                        })
+                      }
+                    }
+                  }}
+                  className="sr-only"
+                />
+                <div
+                  className="w-11 h-6 rounded-full transition-colors"
+                  style={{
+                    background: isPushSubscribed ? 'var(--coral)' : 'var(--text-secondary)',
+                    opacity: isPushLoading ? 0.5 : 1
+                  }}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full bg-white shadow transition-transform"
+                    style={{
+                      transform: isPushSubscribed ? 'translateX(22px)' : 'translateX(2px)',
+                      marginTop: '2px'
+                    }}
+                  />
+                </div>
+              </label>
             </div>
-          </label>
-        </div>
+
+            {pushError && (
+              <p style={{ color: '#e57373' }} className="text-sm">
+                {pushError}
+              </p>
+            )}
+
+            {isPushSubscribed && (
+              <p style={{ color: 'var(--text-secondary)' }} className="text-xs">
+                習慣の時刻に通知が届きます
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Logout */}
