@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Habit, HabitTimeWithCheck } from '@shared/types'
 
 interface HabitCardProps {
@@ -7,13 +8,13 @@ interface HabitCardProps {
 
 export function HabitCard({ habit, onToggleCheck }: HabitCardProps) {
   return (
-    <div className="card">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">{habit.icon || '✨'}</span>
+    <div className="card card--compact">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">{habit.icon || '✨'}</span>
         <span className="font-medium">{habit.title}</span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
         {habit.times.map((time) => (
           <TimeChip
             key={time.id}
@@ -34,15 +35,36 @@ interface TimeChipProps {
 }
 
 function TimeChip({ time, completed, onClick }: TimeChipProps) {
+  const [animating, setAnimating] = useState(false)
   const displayTime = time.slice(0, 5)
 
+  const handleClick = () => {
+    if (!completed) {
+      setAnimating(true)
+      setTimeout(() => setAnimating(false), 700)
+    }
+    onClick()
+  }
+
+  const chipClass = [
+    'chip',
+    completed ? 'chip--completed' : 'chip--time',
+    animating ? 'chip--celebrating' : ''
+  ].filter(Boolean).join(' ')
+
   return (
-    <button
-      onClick={onClick}
-      className={`chip ${completed ? 'chip--completed' : 'chip--time'}`}
-    >
+    <button onClick={handleClick} className={chipClass}>
       <span>{displayTime}</span>
-      {completed ? <span className="chip-checkmark" /> : <span className="chip-circle-dashed" />}
+      {completed ? (
+        <svg
+          className={`chip-checkmark-svg ${animating ? 'chip-checkmark-svg--animated' : ''}`}
+          viewBox="0 0 24 24"
+        >
+          <path className="chip-checkmark-svg__path" d="M4 12l6 6L20 6" />
+        </svg>
+      ) : (
+        <span className="chip-circle-dashed" />
+      )}
     </button>
   )
 }

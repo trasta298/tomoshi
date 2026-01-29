@@ -80,6 +80,7 @@ export interface DbUser {
   monthly_goal: string | null
   streak_count: number
   streak_shields: number
+  shield_consumed_at: number | null
 }
 
 export interface DbDailyLog {

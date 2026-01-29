@@ -116,8 +116,10 @@ export interface TodayData {
     shields: number
     level: 1 | 2 | 3 | 4 | 5
     shieldConsumedAt?: number // シールドが消費された時刻（当日消費された場合のみ）
+    lastActiveDate?: string // 前回達成した日付 (YYYY-MM-DD)
   }
   characterId?: string // 選択されたキャラクターID
+  monthlyGoal?: string | null // 今月の目標
 }
 
 // Journey data (30 days)

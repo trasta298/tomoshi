@@ -216,6 +216,18 @@ export function useToday() {
     return null
   }
 
+  const moveToTomorrow = async (taskId: string): Promise<boolean> => {
+    const res = await fetch(`/api/tasks/${taskId}/move-to-tomorrow`, { method: 'POST' })
+    const json: ApiResponse = await res.json()
+    if (json.success) {
+      setData((prev) =>
+        prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
+      )
+      return true
+    }
+    return false
+  }
+
   return {
     data,
     loading,
@@ -229,6 +241,7 @@ export function useToday() {
     addMoya,
     deleteMoya,
     extendMoya,
-    promoteMoya
+    promoteMoya,
+    moveToTomorrow
   }
 }

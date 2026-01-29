@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Task } from '@shared/types'
+import { CompleteCheck } from './CompleteCheck'
 
 interface TaskCardProps {
   task: Task
   onToggle: (completed: boolean) => void
   onDelete: () => void
   onEdit?: (newTitle: string) => void
+  onMoveToTomorrow?: () => void
 }
 
-export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
+export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow }: TaskCardProps) {
   const [animating, setAnimating] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -116,20 +118,26 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
     >
       <button
         onClick={handleToggle}
-        className={`checkbox-custom ${task.completed ? 'checked' : ''}`}
+        className="checkbox-custom-wrapper"
         aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
       >
-        {task.completed && (
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+        {task.completed && animating ? (
+          <CompleteCheck size="sm" />
+        ) : task.completed ? (
+          <div className="checkbox-custom checked">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+        ) : (
+          <div className="checkbox-custom" />
         )}
       </button>
 
@@ -179,6 +187,18 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
               <span>✏️</span>
               <span>編集</span>
             </button>
+            {onMoveToTomorrow && !task.completed && (
+              <button
+                onClick={() => {
+                  setShowMenu(false)
+                  onMoveToTomorrow()
+                }}
+                className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+              >
+                <span>📅</span>
+                <span>明日へ</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 setShowMenu(false)

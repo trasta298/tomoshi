@@ -5,12 +5,14 @@ import { MiniJourney } from '../components/JourneyView'
 import { TaskCard, EmptyTaskSlot } from '../components/TaskCard'
 import { HabitCard } from '../components/HabitCard'
 import { MoyaList } from '../components/MoyaList'
-import { AddModal, FloatingButton } from '../components/AddModal'
+import { AddModal } from '../components/AddModal'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { PendingTasksModal } from '../components/PendingTasksModal'
 import { MonthlyGoalPrompt, shouldShowMonthlyGoalPrompt } from '../components/MonthlyGoalPrompt'
 import { ShieldToast } from '../components/ShieldToast'
 import { MilestoneToast } from '../components/MilestoneToast'
+import { WelcomeBackToast } from '../components/WelcomeBackToast'
+import { CompleteCheck } from '../components/CompleteCheck'
 import type { Task } from '@shared/types'
 
 // 紙吹雪コンポーネント
@@ -58,7 +60,9 @@ function AchievementOverlay({ onClose }: AchievementOverlayProps) {
   return (
     <div className="achievement-overlay" onClick={onClose}>
       <div className="achievement-card" onClick={(e) => e.stopPropagation()}>
-        <div className="text-5xl mb-4">🎉</div>
+        <div className="flex justify-center mb-4">
+          <CompleteCheck size="lg" sparkle />
+        </div>
         <h2 className="heading text-xl mb-2">きょうの3つ達成！</h2>
         <p style={{ color: 'var(--text-secondary)' }}>すごい！おつかれさま</p>
         <div className="mt-4 flex justify-center gap-1">
@@ -84,7 +88,8 @@ export function TodayPage() {
     addMoya,
     deleteMoya,
     extendMoya,
-    promoteMoya
+    promoteMoya,
+    moveToTomorrow
   } = useToday()
 
   const [showAddModal, setShowAddModal] = useState(false)
@@ -179,6 +184,12 @@ export function TodayPage() {
       {/* マイルストーン到達メッセージ */}
       <MilestoneToast streakCount={data.streak.count} />
 
+      {/* 復帰ウェルカムメッセージ */}
+      <WelcomeBackToast
+        lastActiveDate={data.streak.lastActiveDate}
+        streakCount={data.streak.count}
+      />
+
       {/* 紙吹雪 */}
       {showConfetti && <Confetti />}
 
@@ -193,6 +204,16 @@ export function TodayPage() {
           <h1 className="heading text-2xl page-title">きょう</h1>
           <span style={{ color: 'var(--text-secondary)' }}>{dateStr}</span>
         </div>
+
+        {/* Monthly goal (subtle display) */}
+        {data.monthlyGoal && (
+          <div
+            className="text-sm truncate"
+            style={{ color: 'var(--text-secondary)', marginTop: '-0.5rem' }}
+          >
+            🎯 {data.monthlyGoal}
+          </div>
+        )}
 
         {/* Journey preview */}
         <MiniJourney streakCount={data.streak.count} characterId={data.characterId} />
@@ -229,6 +250,7 @@ export function TodayPage() {
                 onToggle={(completed) => online && handleToggleTask(task.id, completed)}
                 onDelete={() => online && deleteTask(task.id)}
                 onEdit={(newTitle) => online && editTask(task.id, newTitle)}
+                onMoveToTomorrow={online ? () => moveToTomorrow(task.id) : undefined}
               />
             ))}
 
@@ -261,12 +283,6 @@ export function TodayPage() {
           />
         </section>
       </div>
-
-      {/* Floating add button */}
-      <FloatingButton onClick={() => {
-        setAddModalMode('both')
-        setShowAddModal(true)
-      }} />
 
       {/* Add modal */}
       <AddModal

@@ -34,12 +34,13 @@ export function JourneyView({ streakCount, streakShields, characterId = 'default
   const flameEmoji = getFlameEmoji(level)
   const nextMilestone = getNextMilestone(streakCount)
   const characterEmoji = CHARACTER_EMOJIS[characterId] || CHARACTER_EMOJIS.default
+  const isLevel5 = level === 5
 
   return (
     <div className="card card--lemon py-6">
       {/* Character and flame */}
       <div className="text-center mb-4">
-        <div className="text-4xl mb-1 flame-glow">
+        <div className={`text-4xl mb-1 ${isLevel5 ? 'flame-level-5' : 'flame-glow'}`}>
           {flameEmoji}
         </div>
         <div className="text-3xl">{characterEmoji}</div>
@@ -200,10 +201,11 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
   const flameEmoji = getFlameEmoji(level)
   const nextMilestone = getNextMilestone(streakCount)
   const characterEmoji = CHARACTER_EMOJIS[characterId] || CHARACTER_EMOJIS.default
+  const isLevel5 = level === 5
 
   return (
     <div className="flex items-center gap-2 py-2">
-      <span className="text-2xl flame-glow">{flameEmoji}</span>
+      <span className={`text-2xl ${isLevel5 ? 'flame-level-5' : 'flame-glow'}`}>{flameEmoji}</span>
       <span className="text-xl">{characterEmoji}</span>
 
       {/* ミニ旅路パス（10日分） */}

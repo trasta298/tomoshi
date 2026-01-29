@@ -1,5 +1,11 @@
 import { Hono } from 'hono'
-import { getLastNDays, getTodayDate, generateId } from '@shared/utils'
+import {
+  getLastNDays,
+  getTodayDate,
+  getYesterdayDate,
+  generateId,
+  calculateStreakUpdate
+} from '@shared/utils'
 import { getFlameLevel } from '@shared/types'
 import type { Env, DbDailyLog, DbTask, DbHabitCheck, DbUser } from '../types'
 import type { JourneyDay, TodayData } from '@shared/types'
@@ -11,8 +17,10 @@ journeyRoutes.get('/today', async (c) => {
   const { userId } = c.get('auth')
   const today = getTodayDate()
 
-  // Get user for streak info
-  const user = await c.env.DB.prepare('SELECT streak_count, streak_shields FROM users WHERE id = ?')
+  // Get user for streak info and monthly goal
+  const user = await c.env.DB.prepare(
+    'SELECT streak_count, streak_shields, shield_consumed_at, monthly_goal FROM users WHERE id = ?'
+  )
     .bind(userId)
     .first<DbUser>()
 
@@ -114,6 +122,16 @@ journeyRoutes.get('/today', async (c) => {
   })
 
   const streakCount = user?.streak_count || 0
+  const shieldConsumedAt = user?.shield_consumed_at || undefined
+
+  // Get last active date (most recent day with achievement)
+  const lastActiveLog = await c.env.DB.prepare(
+    `SELECT date FROM daily_logs
+     WHERE user_id = ? AND (tasks_completed >= 3 OR habits_completed > 0)
+     ORDER BY date DESC LIMIT 1`
+  )
+    .bind(userId)
+    .first<{ date: string }>()
 
   const todayData: TodayData = {
     tasks: (tasksResult.results || []).map((t) => ({
@@ -125,9 +143,12 @@ journeyRoutes.get('/today', async (c) => {
     streak: {
       count: streakCount,
       shields: user?.streak_shields || 0,
-      level: getFlameLevel(streakCount)
+      level: getFlameLevel(streakCount),
+      shieldConsumedAt,
+      lastActiveDate: lastActiveLog?.date
     },
-    characterId: userSettings?.character_id || 'default'
+    characterId: userSettings?.character_id || 'default',
+    monthlyGoal: user?.monthly_goal
   }
 
   return c.json({ success: true, data: todayData })
@@ -223,14 +244,16 @@ journeyRoutes.get('/day/:date', async (c) => {
   })
 })
 
-// Update daily log (called at end of day or when needed)
+// Update daily log and calculate streak (called when task/habit is completed)
 journeyRoutes.post('/log', async (c) => {
   const { userId } = c.get('auth')
 
   let date: string | undefined
+  let updateStreak = false
   try {
-    const body = await c.req.json<{ date?: string }>()
+    const body = await c.req.json<{ date?: string; updateStreak?: boolean }>()
     date = body.date
+    updateStreak = body.updateStreak ?? false
   } catch {
     // Empty body is valid - date is optional
   }
@@ -256,6 +279,7 @@ journeyRoutes.post('/log', async (c) => {
 
   const tasksCompleted = tasksCount?.count || 0
   const habitsCompleted = habitsCount?.count || 0
+  const todayAchieved = tasksCompleted >= 3 || habitsCompleted > 0
 
   // Upsert daily log
   const existing = await c.env.DB.prepare(
@@ -279,13 +303,68 @@ journeyRoutes.post('/log', async (c) => {
       .run()
   }
 
+  // Calculate and update streak if requested and today is achieved
+  let streakUpdate = null
+  if (updateStreak && todayAchieved) {
+    // Get current user streak info
+    const user = await c.env.DB.prepare(
+      'SELECT streak_count, streak_shields FROM users WHERE id = ?'
+    )
+      .bind(userId)
+      .first<{ streak_count: number; streak_shields: number }>()
+
+    const currentStreak = user?.streak_count || 0
+    const currentShields = user?.streak_shields || 0
+
+    // Check if yesterday was achieved
+    const yesterday = getYesterdayDate()
+    const yesterdayLog = await c.env.DB.prepare(
+      'SELECT tasks_completed, habits_completed FROM daily_logs WHERE user_id = ? AND date = ?'
+    )
+      .bind(userId, yesterday)
+      .first<{ tasks_completed: number; habits_completed: number }>()
+
+    const yesterdayAchieved = yesterdayLog
+      ? yesterdayLog.tasks_completed >= 3 || yesterdayLog.habits_completed > 0
+      : false
+
+    // Calculate streak update
+    streakUpdate = calculateStreakUpdate(
+      currentStreak,
+      currentShields,
+      yesterdayAchieved,
+      todayAchieved
+    )
+
+    // Update user's streak info
+    if (streakUpdate.shieldConsumed) {
+      await c.env.DB.prepare(
+        'UPDATE users SET streak_count = ?, streak_shields = ?, shield_consumed_at = ? WHERE id = ?'
+      )
+        .bind(
+          streakUpdate.newStreakCount,
+          streakUpdate.newShields,
+          streakUpdate.shieldConsumedAt,
+          userId
+        )
+        .run()
+    } else {
+      await c.env.DB.prepare(
+        'UPDATE users SET streak_count = ?, streak_shields = ? WHERE id = ?'
+      )
+        .bind(streakUpdate.newStreakCount, streakUpdate.newShields, userId)
+        .run()
+    }
+  }
+
   return c.json({
     success: true,
     data: {
       date: logDate,
       tasks_completed: tasksCompleted,
       habits_completed: habitsCompleted,
-      achieved: tasksCompleted > 0 || habitsCompleted > 0
+      achieved: todayAchieved,
+      streakUpdate
     }
   })
 })

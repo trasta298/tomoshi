@@ -10,6 +10,7 @@ enabled = true
 binding = "DB"
 database_name = "tomoshi-db"
 database_id = "25f47489-8a6b-4c12-911c-41a23b77d5a1"
+migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "SESSIONS"

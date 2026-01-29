@@ -62,35 +62,22 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2"
-          style={{ color: 'var(--text-primary)' }}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex items-center gap-2 mb-3"
+        style={{ color: 'var(--text-primary)' }}
+      >
+        <h2 className="heading text-lg">もやもや</h2>
+        <span
+          className="text-sm transition-transform"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
+            color: 'var(--text-secondary)'
+          }}
         >
-          <h2 className="heading text-lg">もやもや</h2>
-          <span
-            className="text-sm transition-transform"
-            style={{
-              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
-              color: 'var(--text-secondary)'
-            }}
-          >
-            ▼
-          </span>
-        </button>
-        {/* 追加ボタン */}
-        {onAdd && (
-          <button
-            onClick={onAdd}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-sm transition-all hover:opacity-80 active:scale-95"
-            style={{ background: 'var(--lavender)' }}
-            title="もやもやを追加"
-          >
-            +
-          </button>
-        )}
-      </div>
+          ▼
+        </span>
+      </button>
 
       {!collapsed && (
         <div className="space-y-2">
@@ -104,6 +91,19 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
               canPromote={canPromote}
             />
           ))}
+          {/* 追加ボタン */}
+          {onAdd && (
+            <button
+              onClick={onAdd}
+              className="w-full py-3 text-center rounded-2xl transition-all hover:opacity-70 active:scale-[0.99]"
+              style={{
+                color: 'var(--text-secondary)',
+                background: 'rgba(0, 0, 0, 0.03)'
+              }}
+            >
+              + 追加
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -137,7 +137,7 @@ function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote }: MoyaItemP
 
   return (
     <div
-      className="card card--lavender flex items-center gap-3 relative cursor-pointer"
+      className="card flex items-center gap-3 relative cursor-pointer"
       style={{ opacity }}
       onClick={handleTap}
     >
