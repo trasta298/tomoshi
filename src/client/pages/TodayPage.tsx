@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useToday, fetchPendingTasks } from '../hooks/useToday'
+import { useToday } from '../hooks/useToday'
+import { useDataCache } from '../hooks/useDataCache'
 import { useOnline } from '../components/OfflineBanner'
 import { MiniJourney } from '../components/JourneyView'
 import { TaskCard, EmptyTaskSlot } from '../components/TaskCard'
@@ -75,6 +76,11 @@ function AchievementOverlay({ onClose }: AchievementOverlayProps) {
   )
 }
 
+interface PendingTasksResponse {
+  success: boolean
+  data?: Task[]
+}
+
 export function TodayPage() {
   const {
     data,
@@ -91,6 +97,7 @@ export function TodayPage() {
     promoteMoya,
     moveToTomorrow
   } = useToday()
+  const { fetchWithCache } = useDataCache()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalMode, setAddModalMode] = useState<'task' | 'moya' | 'both'>('both')
@@ -109,18 +116,18 @@ export function TodayPage() {
   const prevAllCompletedRef = useRef(false)
   const pendingCheckedRef = useRef(false)
 
-  // 未完了タスクの確認（初回のみ）
+  // 未完了タスクの確認（キャッシュあり）
   useEffect(() => {
     if (pendingCheckedRef.current || !online) return
     pendingCheckedRef.current = true
 
-    fetchPendingTasks().then((tasks) => {
-      if (tasks.length > 0) {
-        setPendingTasks(tasks)
+    fetchWithCache<PendingTasksResponse>('/api/tasks/pending').then((json) => {
+      if (json.success && json.data && json.data.length > 0) {
+        setPendingTasks(json.data)
         setShowPendingModal(true)
       }
     })
-  }, [online])
+  }, [online, fetchWithCache])
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('ja-JP', {

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ThemeProvider } from './hooks/useTheme'
+import { DataCacheProvider } from './hooks/useDataCache'
 import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { TodayPage } from './pages/TodayPage'
@@ -81,9 +82,11 @@ function AppRoutes() {
 export function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <DataCacheProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </DataCacheProvider>
     </ThemeProvider>
   )
 }

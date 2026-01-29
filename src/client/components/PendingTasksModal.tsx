@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Task } from '@shared/types'
 import { carryOverTask, deletePendingTask } from '../hooks/useToday'
+import { useDataCache } from '../hooks/useDataCache'
 import { ModalWrapper } from './ModalWrapper'
 
 interface PendingTasksModalProps {
@@ -13,6 +14,7 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
   const [pendingTasks, setPendingTasks] = useState(tasks)
   const [processing, setProcessing] = useState<string | null>(null)
   const [carryOverCount, setCarryOverCount] = useState(0)
+  const { invalidate } = useDataCache()
 
   if (pendingTasks.length === 0) {
     return null
@@ -27,6 +29,7 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
     if (success) {
       setCarryOverCount((c) => c + 1)
       setPendingTasks((prev) => prev.filter((t) => t.id !== task.id))
+      invalidate('today', 'journey')
     }
     setProcessing(null)
   }
@@ -36,6 +39,7 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
     const success = await deletePendingTask(task.id)
     if (success) {
       setPendingTasks((prev) => prev.filter((t) => t.id !== task.id))
+      invalidate('today', 'journey')
     }
     setProcessing(null)
   }

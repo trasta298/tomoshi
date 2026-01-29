@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ModalWrapper } from './ModalWrapper'
+import { useDataCache } from '../hooks/useDataCache'
 
 interface MonthlyGoalPromptProps {
   onClose: () => void
@@ -35,6 +36,7 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
   const [newGoal, setNewGoal] = useState('')
   const [loading, setLoading] = useState(true)
   const [achieved, setAchieved] = useState<boolean | null>(null)
+  const { invalidate } = useDataCache()
 
   useEffect(() => {
     const type = getPromptType()
@@ -73,6 +75,7 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ monthly_goal: newGoal || null })
     })
+    invalidate('settings', 'today')
     markAsShown()
     onClose()
   }

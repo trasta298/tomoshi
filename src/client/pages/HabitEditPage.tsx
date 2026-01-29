@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Habit, HabitTime, HabitWithTimes } from '@shared/types'
 import { ModalWrapper } from '../components/ModalWrapper'
+import { useDataCache } from '../hooks/useDataCache'
 
 interface HabitsResponse {
   success: boolean
@@ -28,6 +29,7 @@ export function HabitEditPage() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingHabit, setEditingHabit] = useState<(Habit & { times: HabitTime[] }) | null>(null)
+  const { fetchWithCache, invalidate } = useDataCache()
 
   useEffect(() => {
     fetchHabits()
@@ -35,8 +37,7 @@ export function HabitEditPage() {
 
   const fetchHabits = async () => {
     try {
-      const res = await fetch('/api/habits')
-      const json: HabitsResponse = await res.json()
+      const json = await fetchWithCache<HabitsResponse>('/api/habits')
       if (json.success && json.data) {
         setHabits(json.data)
       }
@@ -54,6 +55,7 @@ export function HabitEditPage() {
       const res = await fetch(`/api/habits/${habitId}`, { method: 'DELETE' })
       if (res.ok) {
         setHabits((prev) => prev.filter((h) => h.id !== habitId))
+        invalidate('habits', 'today')
       }
     } catch {
       console.error('Failed to delete habit')
@@ -92,7 +94,10 @@ export function HabitEditPage() {
             habit={habit}
             onEdit={() => setEditingHabit(habit)}
             onDelete={() => handleDeleteHabit(habit.id)}
-            onUpdate={fetchHabits}
+            onUpdate={() => {
+              invalidate('habits', 'today')
+              fetchHabits()
+            }}
           />
         ))}
 
@@ -119,6 +124,7 @@ export function HabitEditPage() {
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false)
+            invalidate('habits', 'today')
             fetchHabits()
           }}
         />
@@ -131,6 +137,7 @@ export function HabitEditPage() {
           onClose={() => setEditingHabit(null)}
           onSuccess={() => {
             setEditingHabit(null)
+            invalidate('habits', 'today')
             fetchHabits()
           }}
         />

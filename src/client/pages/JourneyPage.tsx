@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { JourneyView } from '../components/JourneyView'
 import { ModalWrapper } from '../components/ModalWrapper'
+import { useDataCache } from '../hooks/useDataCache'
 import type { JourneyDay, User } from '@shared/types'
 
 interface JourneyResponse {
@@ -35,18 +36,16 @@ export function JourneyPage() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState<JourneyDay | null>(null)
+  const { fetchWithCache } = useDataCache()
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [journeyRes, userRes, settingsRes] = await Promise.all([
-          fetch('/api/journey/history'),
-          fetch('/api/auth/me'),
-          fetch('/api/settings')
+        const [journeyJson, userJson, settingsJson] = await Promise.all([
+          fetchWithCache<JourneyResponse>('/api/journey/history'),
+          fetchWithCache<UserResponse>('/api/auth/me'),
+          fetchWithCache<SettingsResponse>('/api/settings')
         ])
-        const journeyJson: JourneyResponse = await journeyRes.json()
-        const userJson: UserResponse = await userRes.json()
-        const settingsJson: SettingsResponse = await settingsRes.json()
 
         if (journeyJson.success && userJson.success && journeyJson.data) {
           setData({
@@ -63,7 +62,7 @@ export function JourneyPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [fetchWithCache])
 
   if (loading) {
     return (

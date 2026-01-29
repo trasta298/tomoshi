@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
 import { usePWAInstall } from '../hooks/usePWAInstall'
 import { usePushNotification } from '../hooks/usePushNotification'
+import { useDataCache } from '../hooks/useDataCache'
 import type { UserSettings, Habit } from '@shared/types'
 
 interface SettingsResponse {
@@ -47,6 +48,7 @@ export function SettingsPage() {
     unsubscribe: unsubscribePush
   } = usePushNotification()
   const navigate = useNavigate()
+  const { fetchWithCache, invalidate } = useDataCache()
 
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [habits, setHabits] = useState<Habit[]>([])
@@ -56,15 +58,11 @@ export function SettingsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [settingsRes, goalRes, habitsRes] = await Promise.all([
-          fetch('/api/settings'),
-          fetch('/api/settings/goal'),
-          fetch('/api/habits')
+        const [settingsJson, goalJson, habitsJson] = await Promise.all([
+          fetchWithCache<SettingsResponse>('/api/settings'),
+          fetchWithCache<GoalResponse>('/api/settings/goal'),
+          fetchWithCache<HabitsResponse>('/api/habits')
         ])
-
-        const settingsJson: SettingsResponse = await settingsRes.json()
-        const goalJson: GoalResponse = await goalRes.json()
-        const habitsJson: HabitsResponse = await habitsRes.json()
 
         if (settingsJson.success && settingsJson.data) setSettings(settingsJson.data)
         if (goalJson.success && goalJson.data) setMonthlyGoal(goalJson.data.monthly_goal || '')
@@ -76,7 +74,7 @@ export function SettingsPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [fetchWithCache])
 
   const handleLogout = async () => {
     if (confirm('ログアウトしますか？')) {
@@ -92,6 +90,7 @@ export function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme: newTheme })
     })
+    invalidate('settings', 'today')
   }
 
   const handleGoalSave = async () => {
@@ -100,6 +99,7 @@ export function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ monthly_goal: monthlyGoal || null })
     })
+    invalidate('settings', 'today')
   }
 
   const handleCharacterChange = async (characterId: string) => {
@@ -109,6 +109,7 @@ export function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ character_id: characterId })
     })
+    invalidate('settings', 'today')
   }
 
   if (loading) {
@@ -289,6 +290,7 @@ export function SettingsPage() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ notify_enabled: true })
                         })
+                        invalidate('settings')
                       }
                     } else {
                       const success = await unsubscribePush()
@@ -299,6 +301,7 @@ export function SettingsPage() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ notify_enabled: false })
                         })
+                        invalidate('settings')
                       }
                     }
                   }}

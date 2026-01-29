@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { TodayData, Task, Moya, HabitCheck } from '@shared/types'
+import { useDataCache } from './useDataCache'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -44,11 +45,11 @@ export function useToday() {
   const [data, setData] = useState<TodayData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { fetchWithCache, invalidate } = useDataCache()
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/journey/today')
-      const json: ApiResponse<TodayData> = await res.json()
+      const json = await fetchWithCache<ApiResponse<TodayData>>('/api/journey/today')
       if (json.success && json.data) {
         setData(json.data)
       } else {
@@ -59,7 +60,7 @@ export function useToday() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [fetchWithCache])
 
   useEffect(() => {
     fetchData()
@@ -74,6 +75,7 @@ export function useToday() {
     const json: ApiResponse<Task> = await res.json()
     if (json.success && json.data) {
       setData((prev) => (prev ? { ...prev, tasks: [...prev.tasks, json.data!] } : null))
+      invalidate('today', 'journey')
       return json.data
     }
     return null
@@ -97,6 +99,7 @@ export function useToday() {
       )
       // Update daily log
       await fetch('/api/journey/log', { method: 'POST' })
+      invalidate('today', 'journey', 'user')
     }
   }
 
@@ -107,6 +110,7 @@ export function useToday() {
       setData((prev) =>
         prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
       )
+      invalidate('today', 'journey')
     }
   }
 
@@ -126,6 +130,7 @@ export function useToday() {
             }
           : null
       )
+      invalidate('today', 'journey')
     }
   }
 
@@ -150,6 +155,7 @@ export function useToday() {
       })
       // Update daily log
       await fetch('/api/journey/log', { method: 'POST' })
+      invalidate('today', 'journey', 'user')
     }
   }
 
@@ -162,6 +168,7 @@ export function useToday() {
     const json: ApiResponse<Moya> = await res.json()
     if (json.success && json.data) {
       setData((prev) => (prev ? { ...prev, moyas: [json.data!, ...prev.moyas] } : null))
+      invalidate('today')
       return json.data
     }
     return null
@@ -174,6 +181,7 @@ export function useToday() {
       setData((prev) =>
         prev ? { ...prev, moyas: prev.moyas.filter((m) => m.id !== moyaId) } : null
       )
+      invalidate('today')
     }
   }
 
@@ -191,6 +199,7 @@ export function useToday() {
             }
           : null
       )
+      invalidate('today')
     }
   }
 
@@ -211,6 +220,7 @@ export function useToday() {
             }
           : null
       )
+      invalidate('today', 'journey')
       return json.data
     }
     return null
@@ -223,6 +233,7 @@ export function useToday() {
       setData((prev) =>
         prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : null
       )
+      invalidate('today', 'journey')
       return true
     }
     return false
