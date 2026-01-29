@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { ModalWrapper } from './ModalWrapper'
+
+type AddModalMode = 'task' | 'moya' | 'both'
 
 interface AddModalProps {
   isOpen: boolean
@@ -6,9 +9,11 @@ interface AddModalProps {
   onAddTask: (title: string) => void
   onAddMoya: (content: string) => void
   canAddTask: boolean
+  /** 'task' = タスク追加のみ, 'moya' = もやもや追加のみ, 'both' = タブで切り替え */
+  initialMode?: AddModalMode
 }
 
-export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: AddModalProps) {
+export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask, initialMode = 'both' }: AddModalProps) {
   const [mode, setMode] = useState<'task' | 'moya'>('task')
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -16,10 +21,18 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: 
   useEffect(() => {
     if (isOpen) {
       setValue('')
-      setMode(canAddTask ? 'task' : 'moya')
+      // initialModeに基づいてモードを設定
+      if (initialMode === 'task') {
+        setMode('task')
+      } else if (initialMode === 'moya') {
+        setMode('moya')
+      } else {
+        // 'both'の場合、タスク追加可能ならtask、そうでなければmoya
+        setMode(canAddTask ? 'task' : 'moya')
+      }
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [isOpen, canAddTask])
+  }, [isOpen, canAddTask, initialMode])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,41 +50,45 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: 
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/30" />
+  // タブを表示するかどうか
+  const showTabs = initialMode === 'both'
 
-      {/* Modal */}
-      <div
-        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl p-6 animate-fade-in"
-        style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Mode tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setMode('task')}
-            disabled={!canAddTask}
-            className={`flex-1 py-2 rounded-full heading text-sm transition-colors ${
-              mode === 'task' ? 'bg-[var(--coral)]' : 'bg-transparent'
-            }`}
-            style={{
-              opacity: canAddTask ? 1 : 0.5,
-              cursor: canAddTask ? 'pointer' : 'not-allowed'
-            }}
-          >
-            きょうの3つ
-          </button>
-          <button
-            onClick={() => setMode('moya')}
-            className={`flex-1 py-2 rounded-full heading text-sm transition-colors ${
-              mode === 'moya' ? 'bg-[var(--lavender)]' : 'bg-transparent'
-            }`}
-          >
-            もやもや
-          </button>
-        </div>
+  return (
+    <ModalWrapper onClose={onClose} position="bottom">
+      <div className="p-6 pb-8">
+        {/* ヘッダー（タブなしの場合） */}
+        {!showTabs && (
+          <h2 className="heading text-lg mb-4 text-center">
+            {mode === 'task' ? 'きょうの3つに追加' : 'もやもやを追加'}
+          </h2>
+        )}
+
+        {/* Mode tabs（'both'モードのみ表示） */}
+        {showTabs && (
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setMode('task')}
+              disabled={!canAddTask}
+              className={`flex-1 py-2 rounded-full heading text-sm transition-colors ${
+                mode === 'task' ? 'bg-[var(--coral)]' : 'bg-transparent'
+              }`}
+              style={{
+                opacity: canAddTask ? 1 : 0.5,
+                cursor: canAddTask ? 'pointer' : 'not-allowed'
+              }}
+            >
+              きょうの3つ
+            </button>
+            <button
+              onClick={() => setMode('moya')}
+              className={`flex-1 py-2 rounded-full heading text-sm transition-colors ${
+                mode === 'moya' ? 'bg-[var(--lavender)]' : 'bg-transparent'
+              }`}
+            >
+              もやもや
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <input
@@ -106,7 +123,7 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask }: 
           />
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }
 

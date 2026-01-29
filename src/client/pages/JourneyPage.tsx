@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { JourneyView } from '../components/JourneyView'
+import { ModalWrapper } from '../components/ModalWrapper'
 import type { JourneyDay, User } from '@shared/types'
 
 interface JourneyResponse {
@@ -86,7 +87,7 @@ export function JourneyPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <h1 className="heading text-2xl">あしあと</h1>
+      <h1 className="heading text-2xl page-title">あしあと</h1>
 
       {/* Main journey view */}
       <JourneyView
@@ -177,13 +178,8 @@ function DayDetailModal({ day, onClose }: DayDetailModalProps) {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30" />
-
-      <div
-        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl p-6 animate-fade-in safe-bottom max-h-[70vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalWrapper onClose={onClose} position="bottom">
+      <div className="p-6 pb-8 max-h-[70vh] overflow-y-auto">
         <h3 className="heading text-lg mb-4">{dateStr}</h3>
 
         {day.achieved ? (
@@ -247,10 +243,14 @@ function DayDetailModal({ day, onClose }: DayDetailModalProps) {
           </div>
         )}
 
-        <button onClick={onClose} className="button button--secondary w-full mt-6">
+        <button
+          onClick={onClose}
+          className="button w-full mt-6"
+          style={{ background: 'var(--bg-primary)' }}
+        >
           閉じる
         </button>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }

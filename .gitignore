@@ -32,3 +32,6 @@ npm-debug.log*
 
 # PWA generated files
 dev-dist/
+
+# Temporary files
+tmp/

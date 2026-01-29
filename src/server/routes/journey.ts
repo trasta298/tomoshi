@@ -226,7 +226,14 @@ journeyRoutes.get('/day/:date', async (c) => {
 // Update daily log (called at end of day or when needed)
 journeyRoutes.post('/log', async (c) => {
   const { userId } = c.get('auth')
-  const { date } = await c.req.json<{ date?: string }>()
+
+  let date: string | undefined
+  try {
+    const body = await c.req.json<{ date?: string }>()
+    date = body.date
+  } catch {
+    // Empty body is valid - date is optional
+  }
 
   const logDate = date || getTodayDate()
 

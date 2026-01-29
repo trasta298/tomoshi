@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ModalWrapper } from './ModalWrapper'
 
 // マイルストーン定義
 const MILESTONES = [
@@ -43,15 +44,8 @@ export function MilestoneToast({ streakCount }: MilestoneToastProps) {
   if (!visible || !milestone) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/30"
-        onClick={() => setVisible(false)}
-      />
-      <div
-        className="relative bg-[var(--bg-card)] rounded-2xl p-8 text-center animate-fade-in shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalWrapper onClose={() => setVisible(false)} position="center">
+      <div className="p-8 text-center shadow-xl">
         <div className="text-6xl mb-4">{milestone.emoji}</div>
         <h2 className="heading text-xl mb-2">
           {milestone.name}に到着！
@@ -65,6 +59,6 @@ export function MilestoneToast({ streakCount }: MilestoneToastProps) {
           <span className="text-xl">✨</span>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }

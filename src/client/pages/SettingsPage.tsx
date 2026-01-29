@@ -111,7 +111,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="heading text-2xl">せってい</h1>
+      <h1 className="heading text-2xl page-title">せってい</h1>
 
       {/* User info */}
       <section className="card">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Task } from '@shared/types'
 import { carryOverTask, deletePendingTask } from '../hooks/useToday'
+import { ModalWrapper } from './ModalWrapper'
 
 interface PendingTasksModalProps {
   tasks: Task[]
@@ -50,13 +51,8 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={handleComplete} />
-
-      <div
-        className="relative w-full max-w-sm bg-[var(--bg-card)] rounded-2xl p-6 animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalWrapper onClose={handleComplete} position="center" maxWidth="max-w-sm">
+      <div className="p-6">
         <div className="text-center mb-4">
           <span className="text-4xl">📋</span>
           <h2 className="heading text-lg mt-2">やり残しタスク</h2>
@@ -119,6 +115,6 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
           あとで決める
         </button>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }

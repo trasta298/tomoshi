@@ -88,6 +88,7 @@ export function TodayPage() {
   } = useToday()
 
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalMode, setAddModalMode] = useState<'task' | 'moya' | 'both'>('both')
   const [showConfetti, setShowConfetti] = useState(false)
   const [showAchievement, setShowAchievement] = useState(false)
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
@@ -189,7 +190,7 @@ export function TodayPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="heading text-2xl">きょうの3つ</h1>
+          <h1 className="heading text-2xl page-title">きょう</h1>
           <span style={{ color: 'var(--text-secondary)' }}>{dateStr}</span>
         </div>
 
@@ -235,7 +236,10 @@ export function TodayPage() {
             {Array.from({ length: 3 - data.tasks.length }).map((_, i) => (
               <EmptyTaskSlot
                 key={`empty-${i}`}
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setAddModalMode('task')
+                  setShowAddModal(true)
+                }}
                 disabled={!online}
               />
             ))}
@@ -250,12 +254,19 @@ export function TodayPage() {
             onExtend={(id) => online && extendMoya(id)}
             onPromote={(id) => online && canAddTask && promoteMoya(id)}
             canPromote={online && canAddTask}
+            onAdd={online ? () => {
+              setAddModalMode('moya')
+              setShowAddModal(true)
+            } : undefined}
           />
         </section>
       </div>
 
       {/* Floating add button */}
-      <FloatingButton onClick={() => setShowAddModal(true)} />
+      <FloatingButton onClick={() => {
+        setAddModalMode('both')
+        setShowAddModal(true)
+      }} />
 
       {/* Add modal */}
       <AddModal
@@ -264,6 +275,7 @@ export function TodayPage() {
         onAddTask={addTask}
         onAddMoya={addMoya}
         canAddTask={canAddTask}
+        initialMode={addModalMode}
       />
 
       {/* Pending tasks modal */}

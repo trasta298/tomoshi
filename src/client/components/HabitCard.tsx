@@ -40,14 +40,9 @@ function TimeChip({ time, completed, onClick }: TimeChipProps) {
     <button
       onClick={onClick}
       className={`chip ${completed ? 'chip--completed' : 'chip--time'}`}
-      style={{
-        cursor: 'pointer',
-        border: 'none',
-        transition: 'transform 0.1s ease'
-      }}
     >
       <span>{displayTime}</span>
-      <span>{completed ? '✓' : '○'}</span>
+      {completed ? <span className="chip-checkmark" /> : <span className="chip-circle-dashed" />}
     </button>
   )
 }

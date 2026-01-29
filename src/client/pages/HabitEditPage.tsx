@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Habit, HabitTime, HabitWithTimes } from '@shared/types'
+import { ModalWrapper } from '../components/ModalWrapper'
 
 interface HabitsResponse {
   success: boolean
@@ -407,118 +408,114 @@ function AddHabitModal({ onClose, onSuccess }: AddHabitModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30" />
+    <ModalWrapper onClose={onClose} position="bottom">
       <div
-        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl animate-fade-in"
-        style={{ maxHeight: '85vh', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
-        onClick={(e) => e.stopPropagation()}
+        className="overflow-y-auto p-6"
+        style={{ maxHeight: 'calc(85vh - 64px - 80px)' }}
       >
-        <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(85vh - 80px)' }}>
-          <h2 className="heading text-lg mb-4">あたらしい習慣</h2>
+        <h2 className="heading text-lg mb-4">あたらしい習慣</h2>
 
-          {/* Name */}
-          <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
-              なまえ
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="例: くすり"
-              maxLength={50}
-              className="w-full p-3 rounded-xl"
-              style={{ background: 'var(--bg-primary)' }}
-            />
-          </div>
+        {/* Name */}
+        <div className="mb-4">
+          <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
+            なまえ
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="例: くすり"
+            maxLength={50}
+            className="w-full p-3 rounded-xl"
+            style={{ background: 'var(--bg-primary)' }}
+          />
+        </div>
 
-          {/* Icon */}
-          <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
-              アイコン
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
-                    icon === emoji ? 'ring-2 ring-[var(--coral)]' : ''
-                  }`}
-                  style={{ background: 'var(--bg-primary)' }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Times */}
-          <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
-              いつ？
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {times.map((time, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => handleUpdateTime(index, e.target.value)}
-                    className="p-2 rounded-lg text-sm"
-                    style={{ background: 'var(--bg-primary)' }}
-                  />
-                  {times.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTime(index)}
-                      className="text-sm opacity-50"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-              {times.length < 5 && (
-                <button
-                  type="button"
-                  onClick={handleAddTime}
-                  className="chip chip--sky"
-                  style={{ cursor: 'pointer', border: 'none' }}
-                >
-                  ＋ 時間を追加
-                </button>
-              )}
-            </div>
+        {/* Icon */}
+        <div className="mb-4">
+          <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
+            アイコン
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {EMOJI_OPTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setIcon(emoji)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+                  icon === emoji ? 'ring-2 ring-[var(--coral)]' : ''
+                }`}
+                style={{ background: 'var(--bg-primary)' }}
+              >
+                {emoji}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Fixed bottom button area */}
-        <div className="px-6">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !title.trim()}
-            className="button button--primary w-full"
-            style={{
-              opacity: submitting || !title.trim() ? 0.5 : 1,
-              cursor: submitting || !title.trim() ? 'not-allowed' : 'pointer'
-            }}
-          >
-            できた！
-          </button>
-
-          <div className="flex justify-center mt-4">
-            <div
-              className="w-12 h-1 rounded-full"
-              style={{ background: 'var(--text-secondary)', opacity: 0.3 }}
-            />
+        {/* Times */}
+        <div className="mb-4">
+          <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
+            いつ？
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {times.map((time, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => handleUpdateTime(index, e.target.value)}
+                  className="p-2 rounded-lg text-sm"
+                  style={{ background: 'var(--bg-primary)' }}
+                />
+                {times.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTime(index)}
+                    className="text-sm opacity-50"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            {times.length < 5 && (
+              <button
+                type="button"
+                onClick={handleAddTime}
+                className="chip chip--sky"
+                style={{ cursor: 'pointer', border: 'none' }}
+              >
+                ＋ 時間を追加
+              </button>
+            )}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Fixed bottom button area */}
+      <div className="px-6 pb-6">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting || !title.trim()}
+          className="button button--primary w-full"
+          style={{
+            opacity: submitting || !title.trim() ? 0.5 : 1,
+            cursor: submitting || !title.trim() ? 'not-allowed' : 'pointer'
+          }}
+        >
+          できた！
+        </button>
+
+        <div className="flex justify-center mt-4">
+          <div
+            className="w-12 h-1 rounded-full"
+            style={{ background: 'var(--text-secondary)', opacity: 0.3 }}
+          />
+        </div>
+      </div>
+    </ModalWrapper>
   )
 }
 
@@ -562,77 +559,73 @@ function EditHabitModal({ habit, onClose, onSuccess }: EditHabitModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30" />
+    <ModalWrapper onClose={onClose} position="bottom">
       <div
-        className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-t-3xl animate-fade-in"
-        style={{ maxHeight: '85vh', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
-        onClick={(e) => e.stopPropagation()}
+        className="overflow-y-auto p-6"
+        style={{ maxHeight: 'calc(85vh - 64px - 80px)' }}
       >
-        <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(85vh - 80px)' }}>
-          <h2 className="heading text-lg mb-4">習慣を編集</h2>
+        <h2 className="heading text-lg mb-4">習慣を編集</h2>
 
-          {/* Name */}
-          <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
-              なまえ
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={50}
-              className="w-full p-3 rounded-xl"
-              style={{ background: 'var(--bg-primary)' }}
-            />
-          </div>
-
-          {/* Icon */}
-          <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
-              アイコン
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
-                    icon === emoji ? 'ring-2 ring-[var(--coral)]' : ''
-                  }`}
-                  style={{ background: 'var(--bg-primary)' }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Name */}
+        <div className="mb-4">
+          <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
+            なまえ
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={50}
+            className="w-full p-3 rounded-xl"
+            style={{ background: 'var(--bg-primary)' }}
+          />
         </div>
 
-        {/* Fixed bottom button area */}
-        <div className="px-6">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !title.trim()}
-            className="button button--primary w-full"
-            style={{
-              opacity: submitting || !title.trim() ? 0.5 : 1,
-              cursor: submitting || !title.trim() ? 'not-allowed' : 'pointer'
-            }}
-          >
-            保存
-          </button>
-
-          <div className="flex justify-center mt-4">
-            <div
-              className="w-12 h-1 rounded-full"
-              style={{ background: 'var(--text-secondary)', opacity: 0.3 }}
-            />
+        {/* Icon */}
+        <div className="mb-4">
+          <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>
+            アイコン
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {EMOJI_OPTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setIcon(emoji)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+                  icon === emoji ? 'ring-2 ring-[var(--coral)]' : ''
+                }`}
+                style={{ background: 'var(--bg-primary)' }}
+              >
+                {emoji}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Fixed bottom button area */}
+      <div className="px-6 pb-6">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting || !title.trim()}
+          className="button button--primary w-full"
+          style={{
+            opacity: submitting || !title.trim() ? 0.5 : 1,
+            cursor: submitting || !title.trim() ? 'not-allowed' : 'pointer'
+          }}
+        >
+          保存
+        </button>
+
+        <div className="flex justify-center mt-4">
+          <div
+            className="w-12 h-1 rounded-full"
+            style={{ background: 'var(--text-secondary)', opacity: 0.3 }}
+          />
+        </div>
+      </div>
+    </ModalWrapper>
   )
 }

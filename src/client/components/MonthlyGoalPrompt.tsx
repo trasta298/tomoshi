@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ModalWrapper } from './ModalWrapper'
 
 interface MonthlyGoalPromptProps {
   onClose: () => void
@@ -98,9 +99,8 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
   if (promptType === 'end') {
     if (achieved !== null) {
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-sm bg-[var(--bg-card)] rounded-2xl p-6 animate-fade-in text-center">
+        <ModalWrapper onClose={onClose} position="center" maxWidth="max-w-sm">
+          <div className="p-6 text-center">
             <span className="text-5xl">{achieved ? '🎉' : '🌱'}</span>
             <h2 className="heading text-xl mt-4">
               {achieved ? 'おめでとう！' : 'また来月がんばろう'}
@@ -109,7 +109,7 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
               {achieved ? '目標を達成したね！すごい！' : '挑戦したことが大切だよ'}
             </p>
           </div>
-        </div>
+        </ModalWrapper>
       )
     }
 
@@ -119,12 +119,8 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
     }
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/40" onClick={handleSkip} />
-        <div
-          className="relative w-full max-w-sm bg-[var(--bg-card)] rounded-2xl p-6 animate-fade-in"
-          onClick={(e) => e.stopPropagation()}
-        >
+      <ModalWrapper onClose={handleSkip} position="center" maxWidth="max-w-sm">
+        <div className="p-6">
           <div className="text-center mb-4">
             <span className="text-4xl">📊</span>
             <h2 className="heading text-lg mt-2">今月のふりかえり</h2>
@@ -169,18 +165,14 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
             あとで
           </button>
         </div>
-      </div>
+      </ModalWrapper>
     )
   }
 
   // 月初：新しい目標を設定
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={handleSkip} />
-      <div
-        className="relative w-full max-w-sm bg-[var(--bg-card)] rounded-2xl p-6 animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalWrapper onClose={handleSkip} position="center" maxWidth="max-w-sm">
+      <div className="p-6">
         <div className="text-center mb-4">
           <span className="text-4xl">🌟</span>
           <h2 className="heading text-lg mt-2">新しい月のはじまり</h2>
@@ -217,7 +209,7 @@ export function MonthlyGoalPrompt({ onClose }: MonthlyGoalPromptProps) {
           スキップ
         </button>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }
 

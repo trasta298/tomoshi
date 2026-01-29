@@ -32,9 +32,10 @@ interface MoyaListProps {
   onExtend: (id: string) => void
   onPromote: (id: string) => void
   canPromote?: boolean
+  onAdd?: () => void
 }
 
-export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true }: MoyaListProps) {
+export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true, onAdd }: MoyaListProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   // 30日以上経過したものを非表示
@@ -46,33 +47,50 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
         <h2 className="heading text-lg mb-3 flex items-center gap-2">
           もやもや
         </h2>
-        <div className="text-center py-6 rounded-2xl moya-empty">
+        <button
+          onClick={onAdd}
+          className="w-full text-center py-6 rounded-2xl moya-empty transition-all hover:opacity-80 active:scale-[0.99]"
+          style={{ cursor: onAdd ? 'pointer' : 'default' }}
+        >
           <p style={{ color: 'var(--text-secondary)' }}>
-            気になることを入れておこう
+            + 気になることを入れておこう
           </p>
-        </div>
+        </button>
       </div>
     )
   }
 
   return (
     <div>
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-2 w-full mb-3"
-        style={{ color: 'var(--text-primary)' }}
-      >
-        <h2 className="heading text-lg">もやもや</h2>
-        <span
-          className="text-sm transition-transform"
-          style={{
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
-            color: 'var(--text-secondary)'
-          }}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2"
+          style={{ color: 'var(--text-primary)' }}
         >
-          ▼
-        </span>
-      </button>
+          <h2 className="heading text-lg">もやもや</h2>
+          <span
+            className="text-sm transition-transform"
+            style={{
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
+              color: 'var(--text-secondary)'
+            }}
+          >
+            ▼
+          </span>
+        </button>
+        {/* 追加ボタン */}
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm transition-all hover:opacity-80 active:scale-95"
+            style={{ background: 'var(--lavender)' }}
+            title="もやもやを追加"
+          >
+            +
+          </button>
+        )}
+      </div>
 
       {!collapsed && (
         <div className="space-y-2">
