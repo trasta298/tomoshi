@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task } from '@shared/types'
 import { CompleteCheck } from './CompleteCheck'
-import { cardVariants, spring } from '../styles/animations'
+import { cardVariants } from '../styles/animations'
 
 interface TaskCardProps {
   task: Task
@@ -10,10 +10,10 @@ interface TaskCardProps {
   onDelete: () => void
   onEdit?: (newTitle: string) => void
   onMoveToTomorrow?: () => void
-  isNewlyPromoted?: boolean
+  onDemoteToMoya?: () => void
 }
 
-export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, isNewlyPromoted }: TaskCardProps) {
+export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, onDemoteToMoya }: TaskCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -106,9 +106,8 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
 
   return (
     <motion.div
-      layout
       variants={cardVariants}
-      initial={isNewlyPromoted ? "hidden" : false}
+      initial="hidden"
       animate="visible"
       exit="exit"
       whileTap="tap"
@@ -123,49 +122,29 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchEnd}
     >
-      <motion.button
-        whileTap={{ scale: 0.8 }}
+      <button
         onClick={handleToggle}
         className="checkbox-custom-wrapper relative"
         aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
       >
-        <AnimatePresence mode="wait">
-          {task.completed ? (
-            <motion.div
-              key="checked"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={spring.bouncy}
-            >
-              <CompleteCheck size="sm" sparkle={true} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="unchecked"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={spring.bouncy}
-              className="checkbox-custom"
-            />
-          )}
-        </AnimatePresence>
-      </motion.button>
+        {task.completed ? (
+          <CompleteCheck size="sm" sparkle={true} />
+        ) : (
+          <div className="checkbox-custom" />
+        )}
+      </button>
 
-      <motion.span
-        layout
-        className="flex-1 cursor-pointer select-none"
+      <span
+        className="flex-1 cursor-pointer select-none transition-colors"
         onClick={handleToggle}
-        animate={{
+        style={{
           color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
-          opacity: task.completed ? 0.6 : 1
+          opacity: task.completed ? 0.6 : 1,
+          textDecoration: task.completed ? 'line-through' : 'none'
         }}
-        transition={{ duration: 0.2 }}
-        style={{ textDecoration: task.completed ? 'line-through' : 'none' }}
       >
         {task.title}
-      </motion.span>
+      </span>
 
       <button
         onPointerDownCapture={(e) => e.stopPropagation()}
@@ -224,6 +203,18 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
                 >
                   <span>📅</span>
                   <span>明日へ</span>
+                </button>
+              )}
+              {onDemoteToMoya && !task.completed && (
+                <button
+                  onClick={() => {
+                    setShowMenu(false)
+                    onDemoteToMoya()
+                  }}
+                  className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+                >
+                  <span>💭</span>
+                  <span>もやもやへ</span>
                 </button>
               )}
               <button

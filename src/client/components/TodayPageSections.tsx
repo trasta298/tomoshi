@@ -60,9 +60,9 @@ interface TasksSectionProps {
   onDelete: (taskId: string) => void
   onEdit: (taskId: string, newTitle: string) => void
   onMoveToTomorrow: (taskId: string) => void
+  onDemoteToMoya: (taskId: string) => void
   onAddTask: () => void
   online: boolean
-  newlyPromotedTaskId: string | null
 }
 
 export function TasksSection({
@@ -71,9 +71,9 @@ export function TasksSection({
   onDelete,
   onEdit,
   onMoveToTomorrow,
+  onDemoteToMoya,
   onAddTask,
-  online,
-  newlyPromotedTaskId
+  online
 }: TasksSectionProps) {
   const allTasksCompleted = tasks.length > 0 && tasks.every((t) => t.completed)
 
@@ -93,7 +93,7 @@ export function TasksSection({
               onDelete={() => online && onDelete(task.id)}
               onEdit={(newTitle) => online && onEdit(task.id, newTitle)}
               onMoveToTomorrow={online ? () => onMoveToTomorrow(task.id) : undefined}
-              isNewlyPromoted={task.id === newlyPromotedTaskId}
+              onDemoteToMoya={online ? () => onDemoteToMoya(task.id) : undefined}
             />
           ))}
         </AnimatePresence>
@@ -115,7 +115,6 @@ interface MoyasSectionProps {
   onAdd: () => void
   online: boolean
   canAddTask: boolean
-  promotingMoyaId: string | null
 }
 
 export function MoyasSection({
@@ -125,8 +124,7 @@ export function MoyasSection({
   onPromote,
   onAdd,
   online,
-  canAddTask,
-  promotingMoyaId
+  canAddTask
 }: MoyasSectionProps) {
   return (
     <section>
@@ -136,7 +134,6 @@ export function MoyasSection({
         onExtend={(id) => online && onExtend(id)}
         onPromote={(id) => online && canAddTask && onPromote(id)}
         canPromote={online && canAddTask}
-        promotingMoyaId={promotingMoyaId}
         onAdd={online ? onAdd : undefined}
       />
     </section>

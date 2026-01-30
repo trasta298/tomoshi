@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Moya } from '@shared/types'
+import { cardVariants } from '../styles/animations'
 
 // 設計仕様に合わせた透明度計算
 function getMoyaOpacity(createdAt: number, extendedAt: number | null): number {
@@ -32,11 +34,10 @@ interface MoyaListProps {
   onExtend: (id: string) => void
   onPromote: (id: string) => void
   canPromote?: boolean
-  promotingMoyaId?: string | null
   onAdd?: () => void
 }
 
-export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true, promotingMoyaId, onAdd }: MoyaListProps) {
+export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = true, onAdd }: MoyaListProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   // 30日以上経過したものを非表示
@@ -82,17 +83,18 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
 
       {!collapsed && (
         <div className="space-y-2">
-          {activeMoyas.map((moya) => (
-            <MoyaItem
-              key={moya.id}
-              moya={moya}
-              onDelete={() => onDelete(moya.id)}
-              onExtend={() => onExtend(moya.id)}
-              onPromote={() => onPromote(moya.id)}
-              canPromote={canPromote}
-              isPromoting={moya.id === promotingMoyaId}
-            />
-          ))}
+          <AnimatePresence mode="popLayout">
+            {activeMoyas.map((moya) => (
+              <MoyaItem
+                key={moya.id}
+                moya={moya}
+                onDelete={() => onDelete(moya.id)}
+                onExtend={() => onExtend(moya.id)}
+                onPromote={() => onPromote(moya.id)}
+                canPromote={canPromote}
+              />
+            ))}
+          </AnimatePresence>
           {/* 追加ボタン */}
           {onAdd && (
             <button
@@ -118,10 +120,9 @@ interface MoyaItemProps {
   onExtend: () => void
   onPromote: () => void
   canPromote: boolean
-  isPromoting?: boolean
 }
 
-function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote, isPromoting }: MoyaItemProps) {
+function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote }: MoyaItemProps) {
   const [showActions, setShowActions] = useState(false)
   const opacity = getMoyaOpacity(moya.created_at, moya.extended_at)
   const daysPassed = getDaysPassed(moya.created_at, moya.extended_at)
@@ -139,9 +140,13 @@ function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote, isPromoting
   }
 
   return (
-    <div
-      className={`card flex items-center gap-3 relative cursor-pointer ${isPromoting ? 'promote-fade-out' : ''}`}
-      style={{ opacity: isPromoting ? undefined : opacity }}
+    <motion.div
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+      className="card flex items-center gap-3 relative cursor-pointer"
+      style={{ opacity }}
       onClick={handleTap}
     >
       {/* 昇格可能時は↑アイコン表示（アニメーション付き） */}
@@ -199,6 +204,6 @@ function MoyaItem({ moya, onDelete, onExtend, onPromote, canPromote, isPromoting
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
-    </div>
+    </motion.div>
   )
 }

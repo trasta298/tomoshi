@@ -42,7 +42,8 @@ export function TodayPage() {
     deleteMoya,
     extendMoya,
     promoteMoya,
-    moveToTomorrow
+    moveToTomorrow,
+    demoteToMoya
   } = useToday()
   const { fetchWithCache } = useDataCache()
   const online = useOnline()
@@ -57,10 +58,6 @@ export function TodayPage() {
   // Achievement animation state
   const [showConfetti, setShowConfetti] = useState(false)
   const [showAchievement, setShowAchievement] = useState(false)
-
-  // Moya promotion animation state
-  const [promotingMoyaId, setPromotingMoyaId] = useState<string | null>(null)
-  const [newlyPromotedTaskId, setNewlyPromotedTaskId] = useState<string | null>(null)
 
   // Refs for tracking state
   const prevAllCompletedRef = useRef(false)
@@ -104,18 +101,9 @@ export function TodayPage() {
     await toggleTask(taskId, completed)
   }
 
-  // Moya promotion with fade animation
-  async function handlePromoteMoya(moyaId: string): Promise<void> {
-    setPromotingMoyaId(moyaId)
-    await new Promise(resolve => setTimeout(resolve, 200))
-
-    const newTask = await promoteMoya(moyaId)
-    setPromotingMoyaId(null)
-
-    if (newTask) {
-      setNewlyPromotedTaskId(newTask.id)
-      setTimeout(() => setNewlyPromotedTaskId(null), 400)
-    }
+  // Moya promotion
+  function handlePromoteMoya(moyaId: string): void {
+    promoteMoya(moyaId)
   }
 
   function openAddModal(mode: 'task' | 'moya' | 'both'): void {
@@ -199,9 +187,9 @@ export function TodayPage() {
           onDelete={deleteTask}
           onEdit={editTask}
           onMoveToTomorrow={moveToTomorrow}
+          onDemoteToMoya={demoteToMoya}
           onAddTask={() => openAddModal('task')}
           online={online}
-          newlyPromotedTaskId={newlyPromotedTaskId}
         />
 
         <MoyasSection
@@ -212,7 +200,6 @@ export function TodayPage() {
           onAdd={() => openAddModal('moya')}
           online={online}
           canAddTask={canAddTask}
-          promotingMoyaId={promotingMoyaId}
         />
       </div>
 

@@ -216,3 +216,46 @@ tasksRoutes.post('/:id/move-to-tomorrow', async (c) => {
 
   return c.json({ success: true })
 })
+
+// Demote task to moya
+tasksRoutes.post('/:id/demote-to-moya', async (c) => {
+  const { userId } = c.get('auth')
+  const taskId = c.req.param('id')
+
+  // Get task
+  const task = await c.env.DB.prepare('SELECT * FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId)
+    .first<DbTask>()
+
+  if (!task) {
+    return c.json({ success: false, error: 'Task not found' }, 404)
+  }
+
+  if (task.completed) {
+    return c.json({ success: false, error: 'Cannot demote completed task' }, 400)
+  }
+
+  // Create moya
+  const moyaId = generateId()
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    'INSERT INTO moyas (id, user_id, content, created_at, extended_at) VALUES (?, ?, ?, ?, NULL)'
+  )
+    .bind(moyaId, userId, task.title, now)
+    .run()
+
+  // Delete task
+  await c.env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run()
+
+  return c.json({
+    success: true,
+    data: {
+      id: moyaId,
+      user_id: userId,
+      content: task.title,
+      created_at: now,
+      extended_at: null
+    }
+  })
+})

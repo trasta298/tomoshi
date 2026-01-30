@@ -1,4 +1,4 @@
-import type { Task, ApiResponse } from '@shared/types'
+import type { Task, Moya, ApiResponse } from '@shared/types'
 import type { ActionContext } from './types'
 import { apiPost, apiPatch, apiDelete, updateDailyLog } from './api'
 
@@ -8,6 +8,7 @@ export interface TaskActions {
   deleteTask: (taskId: string) => Promise<void>
   editTask: (taskId: string, newTitle: string) => Promise<void>
   moveToTomorrow: (taskId: string) => Promise<boolean>
+  demoteToMoya: (taskId: string) => Promise<Moya | null>
 }
 
 export function createTaskActions({ setData, invalidate }: ActionContext): TaskActions {
@@ -71,7 +72,27 @@ export function createTaskActions({ setData, invalidate }: ActionContext): TaskA
     return true
   }
 
-  return { addTask, toggleTask, deleteTask, editTask, moveToTomorrow }
+  async function demoteToMoya(taskId: string): Promise<Moya | null> {
+    const json = await apiPost<Moya>(`/api/tasks/${taskId}/demote-to-moya`)
+    if (!json.success || !json.data) {
+      return null
+    }
+    const moya = json.data
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            tasks: prev.tasks.filter((t) => t.id !== taskId),
+            moyas: [moya, ...prev.moyas]
+          }
+        : null
+    )
+    await updateDailyLog()
+    invalidate('today', 'journey')
+    return moya
+  }
+
+  return { addTask, toggleTask, deleteTask, editTask, moveToTomorrow, demoteToMoya }
 }
 
 /**
