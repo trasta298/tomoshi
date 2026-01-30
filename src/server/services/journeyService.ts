@@ -35,6 +35,55 @@ export interface LogUpdateResult {
 // ==================== Core Business Logic ====================
 
 /**
+ * Update only task-related fields in daily_logs.
+ * Does NOT touch daily_log_habits to preserve historical habit snapshots.
+ * Used when carrying over or deleting tasks from past dates.
+ */
+export async function updateDailyLogTasks(
+  db: D1Database,
+  userId: string,
+  date: string
+): Promise<void> {
+  const taskStats = await repo.getTaskStats(db, userId, date)
+
+  // Use getDailyLogStats to get existing log with habit info
+  const existing = await repo.getDailyLogStats(db, userId, date)
+
+  if (existing) {
+    // Existing log: update only task info, preserve habit info
+    const achieved = isDayAchieved(
+      taskStats.total,
+      taskStats.completed,
+      existing.habits_total,
+      existing.habits_completed
+    )
+    await db
+      .prepare(
+        `UPDATE daily_logs
+         SET tasks_total = ?, tasks_completed = ?, achieved = ?
+         WHERE user_id = ? AND date = ?`
+      )
+      .bind(taskStats.total, taskStats.completed, achieved ? 1 : 0, userId, date)
+      .run()
+  } else {
+    // No existing log: create with task info only (habits = 0)
+    const achieved = isDayAchieved(taskStats.total, taskStats.completed, 0, 0)
+    const dailyLogId = generateId()
+    await repo.insertDailyLog(
+      db,
+      dailyLogId,
+      userId,
+      date,
+      taskStats.total,
+      taskStats.completed,
+      0, // habits_total
+      0, // habits_completed
+      achieved
+    )
+  }
+}
+
+/**
  * Update daily_logs and daily_log_habits for a specific date.
  * Called after task/habit operations.
  */

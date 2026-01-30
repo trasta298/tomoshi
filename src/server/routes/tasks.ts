@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { generateId, getTodayDate, getTomorrowDate } from '@shared/utils'
 import type { Env, DbTask } from '../types'
 import type { Task } from '@shared/types'
+import { updateDailyLogTasks } from '../services/journeyService.js'
 
 export const tasksRoutes = new Hono<{ Bindings: Env }>()
 
@@ -147,13 +148,25 @@ tasksRoutes.patch('/:id', async (c) => {
 tasksRoutes.delete('/:id', async (c) => {
   const { userId } = c.get('auth')
   const taskId = c.req.param('id')
+  const today = getTodayDate()
 
+  // 1. Get task date before deletion
+  const existing = await c.env.DB.prepare('SELECT date FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId)
+    .first<{ date: string }>()
+
+  // 2. Delete task
   const result = await c.env.DB.prepare('DELETE FROM tasks WHERE id = ? AND user_id = ?')
     .bind(taskId, userId)
     .run()
 
   if (!result.meta.changes) {
     return c.json({ success: false, error: 'Task not found' }, 404)
+  }
+
+  // 3. Update daily_log for the task's date (only for past/today, not future)
+  if (existing && existing.date <= today) {
+    await updateDailyLogTasks(c.env.DB, userId, existing.date)
   }
 
   return c.json({ success: true })
@@ -165,7 +178,18 @@ tasksRoutes.post('/:id/move-to-today', async (c) => {
   const taskId = c.req.param('id')
   const today = getTodayDate()
 
-  // Check max 3 tasks for today
+  // 1. Get original date before moving
+  const existing = await c.env.DB.prepare('SELECT date FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId)
+    .first<{ date: string }>()
+
+  if (!existing) {
+    return c.json({ success: false, error: 'Task not found' }, 404)
+  }
+
+  const originalDate = existing.date
+
+  // 2. Check max 3 tasks for today
   const countResult = await c.env.DB.prepare(
     'SELECT COUNT(*) as count FROM tasks WHERE user_id = ? AND date = ?'
   )
@@ -176,13 +200,12 @@ tasksRoutes.post('/:id/move-to-today', async (c) => {
     return c.json({ success: false, error: 'Maximum 3 tasks per day' }, 400)
   }
 
-  const result = await c.env.DB.prepare('UPDATE tasks SET date = ? WHERE id = ? AND user_id = ?')
-    .bind(today, taskId, userId)
-    .run()
+  // 3. Update task date
+  await c.env.DB.prepare('UPDATE tasks SET date = ? WHERE id = ?').bind(today, taskId).run()
 
-  if (!result.meta.changes) {
-    return c.json({ success: false, error: 'Task not found' }, 404)
-  }
+  // 4. Update daily_log for original date (preserves habit snapshots)
+  // Today's daily_log will be updated by client's updateDailyLog() call
+  await updateDailyLogTasks(c.env.DB, userId, originalDate)
 
   return c.json({ success: true })
 })
@@ -191,9 +214,21 @@ tasksRoutes.post('/:id/move-to-today', async (c) => {
 tasksRoutes.post('/:id/move-to-tomorrow', async (c) => {
   const { userId } = c.get('auth')
   const taskId = c.req.param('id')
+  const today = getTodayDate()
   const tomorrow = getTomorrowDate()
 
-  // Check max 3 tasks for tomorrow
+  // 1. Get original date before moving
+  const existing = await c.env.DB.prepare('SELECT date FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId)
+    .first<{ date: string }>()
+
+  if (!existing) {
+    return c.json({ success: false, error: 'Task not found' }, 404)
+  }
+
+  const originalDate = existing.date
+
+  // 2. Check max 3 tasks for tomorrow
   const countResult = await c.env.DB.prepare(
     'SELECT COUNT(*) as count FROM tasks WHERE user_id = ? AND date = ?'
   )
@@ -204,12 +239,12 @@ tasksRoutes.post('/:id/move-to-tomorrow', async (c) => {
     return c.json({ success: false, error: 'Maximum 3 tasks per day' }, 400)
   }
 
-  const result = await c.env.DB.prepare('UPDATE tasks SET date = ? WHERE id = ? AND user_id = ?')
-    .bind(tomorrow, taskId, userId)
-    .run()
+  // 3. Update task date
+  await c.env.DB.prepare('UPDATE tasks SET date = ? WHERE id = ?').bind(tomorrow, taskId).run()
 
-  if (!result.meta.changes) {
-    return c.json({ success: false, error: 'Task not found' }, 404)
+  // 4. Update daily_log for original date (only for past/today, preserves habit snapshots)
+  if (originalDate <= today) {
+    await updateDailyLogTasks(c.env.DB, userId, originalDate)
   }
 
   return c.json({ success: true })

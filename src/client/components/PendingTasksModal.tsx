@@ -7,29 +7,37 @@ import { ModalWrapper } from './ModalWrapper'
 interface PendingTasksModalProps {
   tasks: Task[]
   onComplete: () => void
-  canCarryOver: (count: number) => boolean // 今日のタスク数に応じて持ち越し可能か判定
+  onRefresh: () => Promise<void> // Async refresh to wait for data update
+  todayTaskCount: number // Real-time count from parent
 }
 
-export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTasksModalProps) {
+export function PendingTasksModal({
+  tasks,
+  onComplete,
+  onRefresh,
+  todayTaskCount
+}: PendingTasksModalProps) {
   const [pendingTasks, setPendingTasks] = useState(tasks)
   const [processing, setProcessing] = useState<string | null>(null)
-  const [carryOverCount, setCarryOverCount] = useState(0)
   const { invalidate } = useDataCache()
+
+  // Use todayTaskCount directly for availability check
+  const canAdd = todayTaskCount < 3
 
   if (pendingTasks.length === 0) {
     return null
   }
 
   const handleCarryOver = async (task: Task) => {
-    if (!canCarryOver(carryOverCount + 1)) {
+    if (!canAdd) {
       return
     }
     setProcessing(task.id)
     const success = await carryOverTask(task.id)
     if (success) {
-      setCarryOverCount((c) => c + 1)
       setPendingTasks((prev) => prev.filter((t) => t.id !== task.id))
       invalidate('today', 'journey')
+      await onRefresh() // Wait for refresh to complete before updating UI
     }
     setProcessing(null)
   }
@@ -40,6 +48,7 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
     if (success) {
       setPendingTasks((prev) => prev.filter((t) => t.id !== task.id))
       invalidate('today', 'journey')
+      await onRefresh() // Wait for refresh to complete
     }
     setProcessing(null)
   }
@@ -73,7 +82,6 @@ export function PendingTasksModal({ tasks, onComplete, canCarryOver }: PendingTa
               day: 'numeric'
             })
             const isProcessing = processing === task.id
-            const canAdd = canCarryOver(carryOverCount + 1)
 
             return (
               <div

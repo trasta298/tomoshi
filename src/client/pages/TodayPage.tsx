@@ -265,10 +265,8 @@ export function TodayPage() {
             setShowPendingModal(false)
             refresh()
           }}
-          canCarryOver={(additionalCount) => {
-            const currentTasks = data?.tasks.length || 0
-            return currentTasks + additionalCount <= 3
-          }}
+          onRefresh={refresh}
+          todayTaskCount={data?.tasks.length || 0}
         />
       )}
 
