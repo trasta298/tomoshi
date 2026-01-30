@@ -33,15 +33,15 @@ const MILESTONES: Milestone[] = [
 
 // フルサイズJourney用定数
 const JOURNEY_CONFIG = {
-  svgWidth: 720,
+  dotSpacing: 36,
   svgHeight: 100,
-  roadY: 45,
+  roadY: 60,
   dotRadiusAchieved: 6,
   dotRadiusPending: 5,
   totalDays: 30,
   startX: 30,
-  get endX() { return this.svgWidth - 30 },
-  get dotSpacing() { return (this.endX - this.startX) / (this.totalDays - 1) }
+  get svgWidth() { return this.startX + (this.totalDays - 1) * this.dotSpacing + 30 },
+  get endX() { return this.svgWidth - 30 }
 } as const
 
 // ミニJourney用定数
@@ -133,7 +133,7 @@ function getJourneyX(dayIndex: number): number {
 }
 
 function getJourneyY(dayIndex: number): number {
-  const wave = Math.sin((dayIndex / JOURNEY_CONFIG.totalDays) * Math.PI * 2) * 8
+  const wave = Math.sin((dayIndex / JOURNEY_CONFIG.totalDays) * Math.PI * 4) * 12
   return JOURNEY_CONFIG.roadY + wave
 }
 
@@ -160,7 +160,7 @@ function JourneyPath({ streakCount, characterImage }: JourneyPathProps) {
   const currentDayIndex = streakCount > 0 ? Math.min(streakCount - 1, JOURNEY_CONFIG.totalDays - 1) : 0
   const characterX = getJourneyX(currentDayIndex)
   const characterY = getJourneyY(currentDayIndex)
-  const characterSize = 32
+  const characterSize = 48
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -285,7 +285,7 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
       <img
         src={characterImage}
         alt="character"
-        className="w-12 h-12 object-contain"
+        className="w-16 h-16 object-contain"
       />
 
       <div className="flex-1 overflow-hidden">

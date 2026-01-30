@@ -704,8 +704,8 @@ textarea::placeholder {
 }
 
 .journey-svg {
-  width: 720px;
-  min-width: 720px;
+  width: 1104px;
+  min-width: 1104px;
   height: 100px;
   display: block;
 }
