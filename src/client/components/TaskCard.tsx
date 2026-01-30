@@ -147,9 +147,12 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
       </span>
 
       <button
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
         onPointerDownCapture={(e) => e.stopPropagation()}
         onClick={() => setShowMenu(!showMenu)}
         className="p-2 opacity-50 hover:opacity-100 transition-opacity"
+        style={{ touchAction: 'manipulation' }}
         aria-label="More options"
       >
         <svg
