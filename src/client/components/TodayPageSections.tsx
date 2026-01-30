@@ -12,7 +12,11 @@ interface JourneySectionProps {
 }
 
 export function JourneySection({ streakCount, characterId }: JourneySectionProps) {
-  return <MiniJourney streakCount={streakCount} characterId={characterId} />
+  return (
+    <div className="-mt-1">
+      <MiniJourney streakCount={streakCount} characterId={characterId} />
+    </div>
+  )
 }
 
 // Habits Section

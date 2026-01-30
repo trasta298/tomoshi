@@ -132,33 +132,3 @@ export function AddModal({ isOpen, onClose, onAddTask, onAddMoya, canAddTask, in
   )
 }
 
-// Floating add button
-interface FloatingButtonProps {
-  onClick: () => void
-}
-
-export function FloatingButton({ onClick }: FloatingButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center floating-button z-40"
-      style={{
-        background: 'var(--coral)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-      }}
-      aria-label="Add new item"
-    >
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-      >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    </button>
-  )
-}

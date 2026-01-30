@@ -2,29 +2,17 @@ import { useRef, useEffect } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Sprout, TreePine, Waves, Mountain } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { getFlameLevel } from '@shared/types'
 
 // =============================================================================
 // 定数定義
 // =============================================================================
 
-const CHARACTER_EMOJIS: Record<string, string> = {
-  default: '🚶',
-  runner: '🏃',
-  hiker: '🧗',
-  dancer: '💃',
-  wizard: '🧙',
-  ninja: '🥷',
-  astronaut: '🧑‍🚀',
-  robot: '🤖'
-}
+const CHARACTER_IDS = ['default', 'runner', 'hiker', 'dancer', 'wizard', 'ninja', 'astronaut', 'robot'] as const
+type CharacterId = typeof CHARACTER_IDS[number]
 
-const FLAME_EMOJIS: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: '🕯️',
-  2: '🔥',
-  3: '🔥✨',
-  4: '🔥🌟',
-  5: '🔥💫🌟'
+function getCharacterImagePath(characterId: string): string {
+  const id = CHARACTER_IDS.includes(characterId as CharacterId) ? characterId : 'default'
+  return `/characters/${id}.webp`
 }
 
 interface Milestone {
@@ -79,7 +67,7 @@ interface JourneyViewProps {
 
 export function JourneyView({ streakCount, streakShields, characterId = 'default' }: JourneyViewProps) {
   const nextMilestone = getNextMilestone(streakCount)
-  const characterEmoji = CHARACTER_EMOJIS[characterId] || CHARACTER_EMOJIS.default
+  const characterImage = getCharacterImagePath(characterId)
 
   return (
     <div
@@ -89,7 +77,7 @@ export function JourneyView({ streakCount, streakShields, characterId = 'default
       <div className="relative px-2">
         <JourneyPath
           streakCount={streakCount}
-          characterEmoji={characterEmoji}
+          characterImage={characterImage}
         />
       </div>
 
@@ -137,7 +125,7 @@ export function JourneyView({ streakCount, streakShields, characterId = 'default
 
 interface JourneyPathProps {
   streakCount: number
-  characterEmoji?: string
+  characterImage?: string
 }
 
 function getJourneyX(dayIndex: number): number {
@@ -166,12 +154,13 @@ function generateRoadPath(): string {
   return points.join(' ')
 }
 
-function JourneyPath({ streakCount, characterEmoji }: JourneyPathProps) {
+function JourneyPath({ streakCount, characterImage }: JourneyPathProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const currentDayIndex = streakCount > 0 ? Math.min(streakCount - 1, JOURNEY_CONFIG.totalDays - 1) : 0
   const characterX = getJourneyX(currentDayIndex)
   const characterY = getJourneyY(currentDayIndex)
+  const characterSize = 32
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -233,21 +222,18 @@ function JourneyPath({ streakCount, characterEmoji }: JourneyPathProps) {
           )
         })}
 
-        {characterEmoji && (
-          <motion.text
-            x={characterX}
-            y={characterY - 20}
-            textAnchor="middle"
-            fontSize="20"
-            className="journey-character-text"
+        {characterImage && (
+          <motion.image
+            href={characterImage}
+            width={characterSize}
+            height={characterSize}
+            className="journey-character"
             animate={{
-              x: characterX,
-              y: characterY - 20,
+              x: characterX - characterSize / 2,
+              y: characterY - characterSize - 8,
             }}
             transition={{ type: "spring", stiffness: 100, damping: 20 }}
-          >
-            {characterEmoji}
-          </motion.text>
+          />
         )}
       </svg>
     </div>
@@ -283,11 +269,8 @@ interface MiniJourneyProps {
 }
 
 export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourneyProps) {
-  const level = getFlameLevel(streakCount)
-  const flameEmoji = FLAME_EMOJIS[level]
   const nextMilestone = getNextMilestone(streakCount)
-  const characterEmoji = CHARACTER_EMOJIS[characterId] || CHARACTER_EMOJIS.default
-  const isLevel5 = level === 5
+  const characterImage = getCharacterImagePath(characterId)
 
   // スライディングウィンドウ: 現在位置が表示範囲の中央〜後半に来るように調整
   const safeStreak = Math.max(0, streakCount)
@@ -298,13 +281,12 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
   const { svgWidth, svgHeight, startX, endX, dotY, dotRadius, totalDays } = MINI_JOURNEY_CONFIG
 
   return (
-    <div className="flex items-center gap-2 py-1">
-      <span className={`text-2xl ${isLevel5 ? 'flame-level-5' : 'flame-glow'}`}>
-        {flameEmoji}
-      </span>
-      <span className="text-xl">
-        {characterEmoji}
-      </span>
+    <div className="flex items-center gap-2">
+      <img
+        src={characterImage}
+        alt="character"
+        className="w-12 h-12 object-contain"
+      />
 
       <div className="flex-1 overflow-hidden">
         <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="mini-journey-svg overflow-visible">

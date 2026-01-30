@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Habit, HabitTimeWithCheck } from '@shared/types'
-import { cardVariants, spring } from '../styles/animations'
+import { cardVariants } from '../styles/animations'
 
 interface HabitCardProps {
   habit: Habit & { times: HabitTimeWithCheck[] }

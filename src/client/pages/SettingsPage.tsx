@@ -24,14 +24,14 @@ interface HabitsResponse {
 
 // 選択可能なキャラクター
 const CHARACTERS = [
-  { id: 'default', emoji: '🚶', name: 'たびびと' },
-  { id: 'runner', emoji: '🏃', name: 'はしる' },
-  { id: 'hiker', emoji: '🧗', name: 'やまのぼり' },
-  { id: 'dancer', emoji: '💃', name: 'おどる' },
-  { id: 'wizard', emoji: '🧙', name: 'まほうつかい' },
-  { id: 'ninja', emoji: '🥷', name: 'にんじゃ' },
-  { id: 'astronaut', emoji: '🧑‍🚀', name: 'うちゅう' },
-  { id: 'robot', emoji: '🤖', name: 'ロボット' }
+  { id: 'default', name: 'たびびと' },
+  { id: 'runner', name: 'はしる' },
+  { id: 'hiker', name: 'やまのぼり' },
+  { id: 'dancer', name: 'おどる' },
+  { id: 'wizard', name: 'まほうつかい' },
+  { id: 'ninja', name: 'にんじゃ' },
+  { id: 'astronaut', name: 'うちゅう' },
+  { id: 'robot', name: 'ロボット' }
 ]
 
 export function SettingsPage() {
@@ -191,7 +191,11 @@ export function SettingsPage() {
               }`}
               style={{ background: 'var(--bg-primary)' }}
             >
-              <span className="text-2xl">{char.emoji}</span>
+              <img
+                src={`/characters/${char.id}.webp`}
+                alt={char.name}
+                className="w-12 h-12 object-contain"
+              />
               <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
                 {char.name}
               </span>
