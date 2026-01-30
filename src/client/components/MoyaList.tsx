@@ -105,7 +105,7 @@ export function MoyaList({ moyas, onDelete, onExtend, onPromote, canPromote = tr
                 background: 'rgba(0, 0, 0, 0.03)'
               }}
             >
-              + 追加
+              + 気になるやつ
             </button>
           )}
         </div>
