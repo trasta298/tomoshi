@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Habit, HabitTimeWithCheck } from '@shared/types'
+import { cardVariants, spring } from '../styles/animations'
 
 interface HabitCardProps {
   habit: Habit & { times: HabitTimeWithCheck[] }
@@ -8,13 +9,18 @@ interface HabitCardProps {
 
 export function HabitCard({ habit, onToggleCheck }: HabitCardProps) {
   return (
-    <div className="card card--compact">
+    <motion.div
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className="card card--compact"
+    >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-lg">{habit.icon || '✨'}</span>
         <span className="font-medium">{habit.title}</span>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+      <div className="flex gap-1.5 overflow-x-auto hide-scrollbar p-1">
         {habit.times.map((time) => (
           <TimeChip
             key={time.id}
@@ -24,7 +30,7 @@ export function HabitCard({ habit, onToggleCheck }: HabitCardProps) {
           />
         ))}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -35,36 +41,53 @@ interface TimeChipProps {
 }
 
 function TimeChip({ time, completed, onClick }: TimeChipProps) {
-  const [animating, setAnimating] = useState(false)
   const displayTime = time.slice(0, 5)
-
-  const handleClick = () => {
-    if (!completed) {
-      setAnimating(true)
-      setTimeout(() => setAnimating(false), 700)
-    }
-    onClick()
-  }
 
   const chipClass = [
     'chip',
     completed ? 'chip--completed' : 'chip--time',
-    animating ? 'chip--celebrating' : ''
   ].filter(Boolean).join(' ')
 
   return (
-    <button onClick={handleClick} className={chipClass}>
+    <motion.button
+      onClick={onClick}
+      className={chipClass}
+      whileTap={{ scale: 0.9 }}
+    >
       <span>{displayTime}</span>
-      {completed ? (
-        <svg
-          className={`chip-checkmark-svg ${animating ? 'chip-checkmark-svg--animated' : ''}`}
-          viewBox="0 0 24 24"
-        >
-          <path className="chip-checkmark-svg__path" d="M4 12l6 6L20 6" />
-        </svg>
-      ) : (
-        <span className="chip-circle-dashed" />
-      )}
-    </button>
+      <div className="relative w-3 h-3 flex items-center justify-center">
+        <AnimatePresence mode="popLayout" initial={false}>
+          {completed ? (
+            <motion.svg
+              key="check"
+              className="chip-checkmark-svg absolute"
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <path d="M4 12l6 6L20 6" />
+            </motion.svg>
+          ) : (
+            <motion.span
+              key="circle"
+              className="chip-circle-dashed block w-3 h-3 absolute"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.button>
   )
 }

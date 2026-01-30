@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion'
 import { MiniJourney } from './JourneyView'
 import { HabitCard } from './HabitCard'
 import { TaskCard, EmptyTaskSlot } from './TaskCard'
@@ -32,15 +33,17 @@ export function HabitsSection({ habits, onToggleCheck, online }: HabitsSectionPr
     <section>
       <h2 className="heading text-lg mb-3 flex items-center gap-2">まいにち</h2>
       <div className="space-y-3">
-        {habits.map((habit) => (
-          <HabitCard
-            key={habit.id}
-            habit={habit}
-            onToggleCheck={(timeId, completed) =>
-              online && onToggleCheck(timeId, completed)
-            }
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {habits.map((habit) => (
+            <HabitCard
+              key={habit.id}
+              habit={habit}
+              onToggleCheck={(timeId, completed) =>
+                online && onToggleCheck(timeId, completed)
+              }
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </section>
   )
@@ -77,17 +80,19 @@ export function TasksSection({
         {allTasksCompleted && <span className="text-xl">&#127881;</span>}
       </h2>
       <div className="space-y-3">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onToggle={(completed) => online && onToggle(task.id, completed)}
-            onDelete={() => online && onDelete(task.id)}
-            onEdit={(newTitle) => online && onEdit(task.id, newTitle)}
-            onMoveToTomorrow={online ? () => onMoveToTomorrow(task.id) : undefined}
-            isNewlyPromoted={task.id === newlyPromotedTaskId}
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onToggle={(completed) => online && onToggle(task.id, completed)}
+              onDelete={() => online && onDelete(task.id)}
+              onEdit={(newTitle) => online && onEdit(task.id, newTitle)}
+              onMoveToTomorrow={online ? () => onMoveToTomorrow(task.id) : undefined}
+              isNewlyPromoted={task.id === newlyPromotedTaskId}
+            />
+          ))}
+        </AnimatePresence>
 
         {tasks.length < 3 && (
           <EmptyTaskSlot onClick={onAddTask} disabled={!online} />

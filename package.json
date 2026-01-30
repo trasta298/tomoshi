@@ -21,6 +21,7 @@
     "@block65/webcrypto-web-push": "^1.0.2",
     "@passwordless-id/webauthn": "^2.1.2",
     "@tailwindcss/postcss": "^4.1.18",
+    "framer-motion": "^12.29.2",
     "hono": "^4.7.0",
     "lucide-react": "^0.563.0",
     "react": "^19.0.0",

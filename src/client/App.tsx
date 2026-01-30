@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ThemeProvider } from './hooks/useTheme'
 import { DataCacheProvider } from './hooks/useDataCache'
@@ -34,46 +34,23 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Authenticated Routes with Persistent Layout */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <Layout>
-              <TodayPage />
+              <Outlet />
             </Layout>
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/journey"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <JourneyPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <SettingsPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings/habits"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <HabitEditPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="/" element={<TodayPage />} />
+        <Route path="/journey" element={<JourneyPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/habits" element={<HabitEditPage />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

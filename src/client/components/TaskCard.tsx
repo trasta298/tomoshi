@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Task } from '@shared/types'
 import { CompleteCheck } from './CompleteCheck'
+import { cardVariants, spring } from '../styles/animations'
 
 interface TaskCardProps {
   task: Task
@@ -12,7 +14,6 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, isNewlyPromoted }: TaskCardProps) {
-  const [animating, setAnimating] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -28,10 +29,6 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
 
   const handleToggle = () => {
     if (editing || showMenu) return
-    if (!task.completed) {
-      setAnimating(true)
-      setTimeout(() => setAnimating(false), 400)
-    }
     onToggle(!task.completed)
   }
 
@@ -108,10 +105,17 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
   }
 
   return (
-    <div
-      className={`card flex items-center gap-3 transition-all relative ${animating ? 'task-complete' : ''} ${isNewlyPromoted ? 'promote-fade-in' : ''}`}
+    <motion.div
+      layout
+      variants={cardVariants}
+      initial={isNewlyPromoted ? "hidden" : false}
+      animate="visible"
+      exit="exit"
+      whileTap="tap"
+      className="card flex items-center gap-3 relative overflow-hidden"
       style={{
-        background: task.completed ? 'var(--mint)' : 'var(--bg-card)'
+        background: task.completed ? 'var(--mint)' : 'var(--bg-card)',
+        transition: 'background 0.3s ease'
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -119,41 +123,49 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchEnd}
     >
-      <button
+      <motion.button
+        whileTap={{ scale: 0.8 }}
         onClick={handleToggle}
-        className="checkbox-custom-wrapper"
+        className="checkbox-custom-wrapper relative"
         aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
       >
-        {task.completed && animating ? (
-          <CompleteCheck size="sm" />
-        ) : task.completed ? (
-          <div className="checkbox-custom checked">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
+        <AnimatePresence mode="wait">
+          {task.completed ? (
+            <motion.div
+              key="checked"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={spring.bouncy}
             >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-        ) : (
-          <div className="checkbox-custom" />
-        )}
-      </button>
+              <CompleteCheck size="sm" sparkle={true} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="unchecked"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={spring.bouncy}
+              className="checkbox-custom"
+            />
+          )}
+        </AnimatePresence>
+      </motion.button>
 
-      <span
-        className="flex-1 cursor-pointer"
+      <motion.span
+        layout
+        className="flex-1 cursor-pointer select-none"
         onClick={handleToggle}
-        style={{
-          textDecoration: task.completed ? 'line-through' : 'none',
-          color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)'
+        animate={{
+          color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
+          opacity: task.completed ? 0.6 : 1
         }}
+        transition={{ duration: 0.2 }}
+        style={{ textDecoration: task.completed ? 'line-through' : 'none' }}
       >
         {task.title}
-      </span>
+      </motion.span>
 
       <button
         onClick={() => setShowMenu(!showMenu)}
@@ -173,50 +185,59 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
       </button>
 
       {/* Context menu */}
-      {showMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowMenu(false)}
-          />
-          <div
-            className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg overflow-hidden"
-            style={{ background: 'var(--bg-card)' }}
-          >
-            <button
-              onClick={handleEdit}
-              className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40"
+              onClick={() => setShowMenu(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg overflow-hidden"
+              style={{ background: 'var(--bg-card)' }}
             >
-              <span>✏️</span>
-              <span>編集</span>
-            </button>
-            {onMoveToTomorrow && !task.completed && (
+              <button
+                onClick={handleEdit}
+                className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+              >
+                <span>✏️</span>
+                <span>編集</span>
+              </button>
+              {onMoveToTomorrow && !task.completed && (
+                <button
+                  onClick={() => {
+                    setShowMenu(false)
+                    onMoveToTomorrow()
+                  }}
+                  className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+                >
+                  <span>📅</span>
+                  <span>明日へ</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowMenu(false)
-                  onMoveToTomorrow()
+                  onDelete()
                 }}
                 className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
+                style={{ color: '#e57373' }}
               >
-                <span>📅</span>
-                <span>明日へ</span>
+                <span>🗑️</span>
+                <span>削除</span>
               </button>
-            )}
-            <button
-              onClick={() => {
-                setShowMenu(false)
-                onDelete()
-              }}
-              className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
-              style={{ color: '#e57373' }}
-            >
-              <span>🗑️</span>
-              <span>削除</span>
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -227,7 +248,9 @@ interface EmptyTaskSlotProps {
 
 export function EmptyTaskSlot({ onClick, disabled }: EmptyTaskSlotProps) {
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       disabled={disabled}
       className="w-full p-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 transition-colors"
@@ -240,6 +263,6 @@ export function EmptyTaskSlot({ onClick, disabled }: EmptyTaskSlotProps) {
     >
       <span>＋</span>
       <span>やりたいこと</span>
-    </button>
+    </motion.button>
   )
 }

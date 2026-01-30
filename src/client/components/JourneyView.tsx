@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Sprout, TreePine, Waves, Mountain } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { getFlameLevel } from '@shared/types'
 
 // =============================================================================
@@ -81,7 +82,9 @@ export function JourneyView({ streakCount, streakShields, characterId = 'default
   const characterEmoji = CHARACTER_EMOJIS[characterId] || CHARACTER_EMOJIS.default
 
   return (
-    <div className="card card--lemon py-6">
+    <div
+      className="card card--lemon py-6"
+    >
       {/* 30日分の旅路パス */}
       <div className="relative px-2">
         <JourneyPath
@@ -95,7 +98,15 @@ export function JourneyView({ streakCount, streakShields, characterId = 'default
         <p className="heading text-lg">
           {streakCount > 0 ? (
             <>
-              <span className="text-2xl font-bold">{streakCount}</span>日連続！
+              <motion.span
+                key={streakCount}
+                initial={{ scale: 1.2, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="text-2xl font-bold inline-block"
+              >
+                {streakCount}
+              </motion.span>日連続！
             </>
           ) : (
             '今日から始めよう'
@@ -175,7 +186,7 @@ function JourneyPath({ streakCount, characterEmoji }: JourneyPathProps) {
 
   return (
     <div className="journey-scroll-container" ref={scrollRef}>
-      <svg viewBox={`0 0 ${JOURNEY_CONFIG.svgWidth} ${JOURNEY_CONFIG.svgHeight}`} className="journey-svg">
+      <svg viewBox={`0 0 ${JOURNEY_CONFIG.svgWidth} ${JOURNEY_CONFIG.svgHeight}`} className="journey-svg overflow-visible">
         <path d={roadPath} className="journey-road" />
 
         {Array.from({ length: JOURNEY_CONFIG.totalDays }, (_, dayIndex) => {
@@ -188,13 +199,17 @@ function JourneyPath({ streakCount, characterEmoji }: JourneyPathProps) {
           return (
             <g key={dayIndex}>
               {isCurrent && streakCount > 0 && (
-                <circle cx={x} cy={y} r={r + 5} className="journey-dot-current-ring" />
+                <circle
+                  cx={x} cy={y} r={r + 4}
+                  className="journey-dot-current-ring"
+                />
               )}
-              <circle
+              <motion.circle
                 cx={x}
                 cy={y}
-                r={r}
                 className={isAchieved ? 'journey-dot-achieved' : 'journey-dot-pending'}
+                animate={{ r: isAchieved ? r * 1.2 : r }}
+                transition={{ duration: 0.3 }}
               />
             </g>
           )
@@ -219,15 +234,20 @@ function JourneyPath({ streakCount, characterEmoji }: JourneyPathProps) {
         })}
 
         {characterEmoji && (
-          <text
+          <motion.text
             x={characterX}
             y={characterY - 20}
             textAnchor="middle"
             fontSize="20"
             className="journey-character-text"
+            animate={{
+              x: characterX,
+              y: characterY - 20,
+            }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
           >
             {characterEmoji}
-          </text>
+          </motion.text>
         )}
       </svg>
     </div>
@@ -270,7 +290,8 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
   const isLevel5 = level === 5
 
   // スライディングウィンドウ: 現在位置が表示範囲の中央〜後半に来るように調整
-  const startDay = Math.max(1, streakCount - Math.floor(MINI_JOURNEY_CONFIG.totalDays * 0.7) + 1)
+  const safeStreak = Math.max(0, streakCount)
+  const startDay = Math.max(1, safeStreak - Math.floor(MINI_JOURNEY_CONFIG.totalDays * 0.7) + 1)
   const endDay = startDay + MINI_JOURNEY_CONFIG.totalDays - 1
 
   const milestonesInRange = MILESTONES.filter((m) => m.days >= startDay && m.days <= endDay && m.icon)
@@ -278,23 +299,32 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
 
   return (
     <div className="flex items-center gap-2 py-1">
-      <span className={`text-2xl ${isLevel5 ? 'flame-level-5' : 'flame-glow'}`}>{flameEmoji}</span>
-      <span className="text-xl">{characterEmoji}</span>
+      <span className={`text-2xl ${isLevel5 ? 'flame-level-5' : 'flame-glow'}`}>
+        {flameEmoji}
+      </span>
+      <span className="text-xl">
+        {characterEmoji}
+      </span>
 
       <div className="flex-1 overflow-hidden">
-        <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="mini-journey-svg">
+        <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="mini-journey-svg overflow-visible">
           <line x1={startX} y1={dotY} x2={endX} y2={dotY} className="mini-journey-road" />
 
           {Array.from({ length: totalDays }, (_, i) => {
             const day = startDay + i
-            const isAchieved = day <= streakCount
-            const isCurrent = day === streakCount && streakCount > 0
+            const isAchieved = day <= safeStreak
+            const isCurrent = day === safeStreak && safeStreak > 0
             const x = getMiniJourneyX(i)
+
+            const ringRadius = dotRadius + 3
 
             return (
               <g key={i}>
                 {isCurrent && (
-                  <circle cx={x} cy={dotY} r={dotRadius + 3} className="mini-journey-dot-current-ring" />
+                  <circle
+                    cx={x} cy={dotY} r={ringRadius}
+                    className="mini-journey-dot-current-ring"
+                  />
                 )}
                 <circle
                   cx={x}
@@ -310,7 +340,7 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
             const windowIndex = milestone.days - startDay
             const x = getMiniJourneyX(windowIndex)
             const IconComponent = milestone.icon!
-            const isReached = milestone.days <= streakCount
+            const isReached = milestone.days <= safeStreak
 
             return (
               <g
@@ -326,7 +356,7 @@ export function MiniJourney({ streakCount, characterId = 'default' }: MiniJourne
       </div>
 
       <div className="text-right">
-        {streakCount > 0 && <span className="text-sm heading">{streakCount}日</span>}
+        {safeStreak > 0 && <span className="text-sm heading">{safeStreak}日</span>}
         {nextMilestone && (
           <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
             {nextMilestone.emoji} あと{nextMilestone.daysLeft}日

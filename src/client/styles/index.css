@@ -43,9 +43,12 @@
 }
 
 @keyframes flame-flicker {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow: 0 0 10px var(--flame-glow), 0 0 20px var(--flame-glow), 0 0 30px rgba(255, 215, 0, 0.5);
   }
+
   50% {
     text-shadow: 0 0 15px var(--flame-glow), 0 0 25px var(--flame-glow), 0 0 40px rgba(255, 215, 0, 0.6);
   }
@@ -53,12 +56,10 @@
 
 /* 夜モード: カードの照明グラデーション */
 [data-theme='dark'] .card {
-  background: linear-gradient(
-    135deg,
-    rgba(50, 50, 80, 0.9) 0%,
-    var(--bg-card) 50%,
-    rgba(40, 40, 65, 0.95) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(50, 50, 80, 0.9) 0%,
+      var(--bg-card) 50%,
+      rgba(40, 40, 65, 0.95) 100%);
 }
 
 * {
@@ -127,15 +128,19 @@ h3,
 .card--coral {
   background: var(--coral);
 }
+
 .card--mint {
   background: var(--mint);
 }
+
 .card--lavender {
   background: var(--lavender);
 }
+
 .card--lemon {
   background: var(--lemon);
 }
+
 .card--sky {
   background: var(--sky);
 }
@@ -202,44 +207,17 @@ h3,
   color: var(--text-primary);
 }
 
-/* チップ達成アニメーション */
-.chip--celebrating {
-  animation: chip-celebrate 0.5s ease-out;
+/* 未完了の時間チップの破線円 */
+.chip-circle-dashed {
+  border: 1.5px dashed var(--text-secondary);
+  border-radius: 50%;
 }
 
-@keyframes chip-celebrate {
-  0% {
-    background: var(--mint);
-    filter: brightness(1);
-  }
-  30% {
-    background: color-mix(in srgb, var(--mint) 60%, white);
-    filter: brightness(1.1);
-  }
-  100% {
-    background: var(--mint);
-    filter: brightness(1);
-  }
+/* 完了時のチェックマークSVG */
+.chip-checkmark-svg {
+  color: var(--text-primary);
 }
 
-[data-theme='dark'] .chip--celebrating {
-  animation-name: chip-celebrate-dark;
-}
-
-@keyframes chip-celebrate-dark {
-  0% {
-    background: var(--mint);
-    filter: brightness(1);
-  }
-  30% {
-    background: color-mix(in srgb, var(--mint) 70%, white);
-    filter: brightness(1.2);
-  }
-  100% {
-    background: var(--mint);
-    filter: brightness(1);
-  }
-}
 
 .chip--more {
   background: rgba(0, 0, 0, 0.08);
@@ -254,58 +232,17 @@ h3,
   background: rgba(255, 255, 255, 0.12);
 }
 
-.chip-checkmark,
-.chip-circle-dashed {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
 
-.chip-checkmark {
-  position: relative;
-}
-
-.chip-checkmark::after {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 1px;
-  width: 4px;
-  height: 7px;
-  border: solid var(--text-primary);
-  border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
-}
-
-/* チップのチェックマークSVGアニメーション */
-.chip-checkmark-svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-
-.chip-checkmark-svg__path {
-  fill: none;
-  stroke: var(--text-primary);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.chip-checkmark-svg--animated .chip-checkmark-svg__path {
-  stroke-dasharray: 30;
-  stroke-dashoffset: 30;
-  animation: chip-check-draw 0.5s ease-out both;
-}
-
-@keyframes chip-check-draw {
-  0% { stroke-dashoffset: 30; }
-  100% { stroke-dashoffset: 0; }
-}
-
-.chip-circle-dashed {
-  border: 1.5px dashed var(--text-secondary);
-  border-radius: 50%;
+/* Confetti container */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: hidden;
 }
 
 /* Animations */
@@ -314,6 +251,7 @@ h3,
     transform: translateY(0) rotate(0) scale(1);
     opacity: 1;
   }
+
   100% {
     transform: translateY(-100px) rotate(360deg) scale(0.5);
     opacity: 0;
@@ -344,6 +282,7 @@ h3,
     transform: translateY(-20px) rotate(0deg);
     opacity: 1;
   }
+
   100% {
     transform: translateY(100vh) rotate(720deg);
     opacity: 0;
@@ -366,6 +305,7 @@ h3,
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -385,6 +325,7 @@ h3,
     transform: scale(0.5);
     opacity: 0;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -392,10 +333,12 @@ h3,
 }
 
 @keyframes bounce {
+
   0%,
   100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.1);
   }
@@ -406,6 +349,7 @@ h3,
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -420,30 +364,16 @@ h3,
   animation: bounce 0.4s ease-out;
 }
 
-/* Task completion animation */
-.task-complete {
-  animation: taskComplete 0.4s ease-out forwards;
-}
-
-@keyframes taskComplete {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.95);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
 
 /* Floating button animation */
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
+
   50% {
     transform: translateY(-3px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
@@ -458,12 +388,15 @@ h3,
 .moya-fresh {
   opacity: 1;
 }
+
 .moya-fading-1 {
   opacity: 0.7;
 }
+
 .moya-fading-2 {
   opacity: 0.4;
 }
+
 .moya-expiring {
   opacity: 0.2;
 }
@@ -543,6 +476,7 @@ textarea {
 
 /* Firefox dark mode */
 @-moz-document url-prefix() {
+
   [data-theme='dark'] input[type='time'],
   [data-theme='dark'] input[type='date'] {
     color-scheme: dark;
@@ -624,12 +558,10 @@ textarea::placeholder {
 .flame-level-5::before {
   width: 150%;
   height: 150%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 215, 0, 0.4) 0%,
-    rgba(255, 140, 0, 0.2) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle,
+      rgba(255, 215, 0, 0.4) 0%,
+      rgba(255, 140, 0, 0.2) 40%,
+      transparent 70%);
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
@@ -646,10 +578,13 @@ textarea::placeholder {
 }
 
 @keyframes legendary-flame {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
   }
+
   50% {
     transform: scale(1.08);
     filter: drop-shadow(0 0 16px rgba(255, 140, 0, 0.8));
@@ -657,10 +592,13 @@ textarea::placeholder {
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.6;
     transform: translate(-50%, -50%) scale(1);
   }
+
   50% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.15);
@@ -668,10 +606,13 @@ textarea::placeholder {
 }
 
 @keyframes sparkle-float {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.7;
     transform: translate(-50%, -50%) rotate(0deg);
   }
+
   50% {
     opacity: 1;
     transform: translate(-50%, -50%) rotate(10deg);
@@ -688,142 +629,18 @@ textarea::placeholder {
 }
 
 [data-theme='dark'] .flame-level-5::before {
-  background: radial-gradient(
-    circle,
-    rgba(255, 215, 0, 0.5) 0%,
-    rgba(255, 69, 0, 0.3) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle,
+      rgba(255, 215, 0, 0.5) 0%,
+      rgba(255, 69, 0, 0.3) 40%,
+      transparent 70%);
 }
 
-/* ========================================
-   Complete Check Animation
-   完了時の共通チェックマークアニメーション
-   SVG stroke-dashoffset を使用
-   ======================================== */
-
-/* Jelly Pop アニメーション */
-@keyframes jelly-pop {
-  0% { transform: scale(0); opacity: 0; }
-  25% { transform: scale(0.6); opacity: 1; }
-  50% { transform: scale(1.2); }
-  75% { transform: scale(0.9); }
-  100% { transform: scale(1); }
-}
-
-
-.complete-check {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-}
-
-.complete-check__circle {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--mint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: jelly-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-.complete-check__icon {
-  width: 50%;
-  height: 50%;
-}
-
-.complete-check__path {
-  fill: none;
-  stroke: var(--text-primary);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 30;
-  stroke-dashoffset: 30;
-  animation: draw-check 0.4s 0.3s ease-out both;
-}
-
-@keyframes draw-check {
-  0% { stroke-dashoffset: 30; }
-  100% { stroke-dashoffset: 0; }
-}
-
-/* サイズバリエーション */
-.complete-check--sm {
-  width: 24px;
-  height: 24px;
-}
-
-.complete-check--sm .complete-check__path {
-  stroke-width: 3.5;
-}
-
-.complete-check--lg {
-  width: 64px;
-  height: 64px;
-}
-
-.complete-check--lg .complete-check__path {
-  stroke-width: 2.5;
-}
-
-/* カラーバリエーション */
-.complete-check--coral .complete-check__circle {
-  background: var(--coral);
-}
-
-.complete-check--lavender .complete-check__circle {
-  background: var(--lavender);
-}
-
-.complete-check--sky .complete-check__circle {
-  background: var(--sky);
-}
-
-.complete-check--lemon .complete-check__circle {
-  background: var(--lemon);
-}
-
-/* 成功時のキラキラエフェクト付きバージョン */
-.complete-check--sparkle::before {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(212, 245, 228, 0.6) 0%,
-    transparent 70%
-  );
-  animation: complete-sparkle-glow 0.8s ease-out forwards;
-  pointer-events: none;
-}
-
-@keyframes complete-sparkle-glow {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  40% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
 
 /* ダークモード対応 */
 [data-theme='dark'] .complete-check--sparkle::before {
-  background: radial-gradient(
-    circle,
-    rgba(139, 207, 176, 0.4) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(circle,
+      rgba(139, 207, 176, 0.4) 0%,
+      transparent 70%);
 }
 
 /* ========================================
@@ -833,35 +650,10 @@ textarea::placeholder {
 
 /* もやもやのフェードアウト（上に浮きながら消える） */
 .promote-fade-out {
-  animation: promote-out 0.2s ease-out forwards;
   pointer-events: none;
-}
-
-@keyframes promote-out {
-  0% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.95) translateY(-10px);
-  }
-}
-
-/* タスクのフェードイン（ポップしながら現れる） */
-.promote-fade-in {
-  animation: promote-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes promote-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
 
 /* もやもや昇格矢印のアニメーション */
@@ -943,12 +735,6 @@ textarea::placeholder {
   fill: rgba(240, 98, 146, 0.2);
   stroke: #f06292;
   stroke-width: 2;
-  animation: current-ring-pulse 2s ease-in-out infinite;
-}
-
-@keyframes current-ring-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
 }
 
 /* マイルストーン（達成済み） */
@@ -1003,12 +789,6 @@ textarea::placeholder {
   fill: rgba(240, 98, 146, 0.15);
   stroke: #f06292;
   stroke-width: 1;
-  animation: mini-current-ring-pulse 2s ease-in-out infinite;
-}
-
-@keyframes mini-current-ring-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
 }
 
 /* ========================================
