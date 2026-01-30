@@ -112,7 +112,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
       animate="visible"
       exit="exit"
       whileTap="tap"
-      className="card flex items-center gap-3 relative overflow-hidden"
+      className="card flex items-center gap-3 relative"
       style={{
         background: task.completed ? 'var(--mint)' : 'var(--bg-card)',
         transition: 'background 0.3s ease'
@@ -168,6 +168,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
       </motion.span>
 
       <button
+        onPointerDownCapture={(e) => e.stopPropagation()}
         onClick={() => setShowMenu(!showMenu)}
         className="p-2 opacity-50 hover:opacity-100 transition-opacity"
         aria-label="More options"
@@ -193,7 +194,10 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, i
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-40"
-              onClick={() => setShowMenu(false)}
+              onPointerDownCapture={(e) => {
+                e.stopPropagation()
+                setShowMenu(false)
+              }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 10 }}
