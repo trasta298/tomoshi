@@ -1,9 +1,9 @@
 import type { Task, Moya, ApiResponse } from '@shared/types'
-import type { ActionContext } from './types'
-import { apiPost, apiPatch, apiDelete, updateDailyLog } from './api'
+import type { ActionContext } from './types.js'
+import { apiPost, apiPatch, apiDelete, updateDailyLog } from './api.js'
 
 export interface TaskActions {
-  addTask: (title: string) => Promise<Task | null>
+  addTask: (title: string, date?: string) => Promise<Task | null>
   toggleTask: (taskId: string, completed: boolean) => Promise<void>
   deleteTask: (taskId: string) => Promise<void>
   editTask: (taskId: string, newTitle: string) => Promise<void>
@@ -12,13 +12,20 @@ export interface TaskActions {
 }
 
 export function createTaskActions({ setData, invalidate }: ActionContext): TaskActions {
-  async function addTask(title: string): Promise<Task | null> {
-    const json = await apiPost<Task>('/api/tasks', { title })
+  async function addTask(title: string, date?: string): Promise<Task | null> {
+    const body: { title: string; date?: string } = { title }
+    if (date) {
+      body.date = date
+    }
+    const json = await apiPost<Task>('/api/tasks', body)
     if (!json.success || !json.data) {
       return null
     }
     const task = json.data
-    setData((prev) => (prev ? { ...prev, tasks: [...prev.tasks, task] } : null))
+    // Only update local state if adding to today (no date specified)
+    if (!date) {
+      setData((prev) => (prev ? { ...prev, tasks: [...prev.tasks, task] } : null))
+    }
     await updateDailyLog()
     invalidate('today', 'journey')
     return task

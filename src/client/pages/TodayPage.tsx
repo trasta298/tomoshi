@@ -1,17 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
-import { useToday } from '../hooks/useToday'
-import { useDataCache } from '../hooks/useDataCache'
-import { useOnline } from '../components/OfflineBanner'
-import { Confetti } from '../components/Confetti'
-import { AchievementOverlay } from '../components/AchievementOverlay'
-import { JourneySection, HabitsSection, TasksSection, MoyasSection } from '../components/TodayPageSections'
-import { AddModal } from '../components/AddModal'
-import { OfflineBanner } from '../components/OfflineBanner'
-import { PendingTasksModal } from '../components/PendingTasksModal'
-import { MonthlyGoalPrompt, shouldShowMonthlyGoalPrompt } from '../components/MonthlyGoalPrompt'
-import { ShieldToast } from '../components/ShieldToast'
-import { MilestoneToast } from '../components/MilestoneToast'
-import { WelcomeBackToast } from '../components/WelcomeBackToast'
+import { useToday } from '../hooks/useToday.js'
+import { useDataCache } from '../hooks/useDataCache.js'
+import { useOnline, OfflineBanner } from '../components/OfflineBanner.js'
+import { Confetti } from '../components/Confetti.js'
+import { AchievementOverlay } from '../components/AchievementOverlay.js'
+import {
+  JourneySection,
+  HabitsSection,
+  TasksSection,
+  MoyasSection
+} from '../components/TodayPageSections.js'
+import { AddModal } from '../components/AddModal.js'
+import { PendingTasksModal } from '../components/PendingTasksModal.js'
+import { MonthlyGoalPrompt, shouldShowMonthlyGoalPrompt } from '../components/MonthlyGoalPrompt.js'
+import { ShieldToast } from '../components/ShieldToast.js'
+import { MilestoneToast } from '../components/MilestoneToast.js'
+import { WelcomeBackToast } from '../components/WelcomeBackToast.js'
+import { MoveToTomorrowToast } from '../components/MoveToTomorrowToast.js'
+import { TomorrowTasksModal } from '../components/TomorrowTasksModal.js'
+import { fetchTomorrowTaskCount } from '../hooks/useTomorrowTasks.js'
 import type { Task } from '@shared/types'
 
 interface PendingTasksResponse {
@@ -54,6 +61,13 @@ export function TodayPage() {
   const [showPendingModal, setShowPendingModal] = useState(false)
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
   const [showMonthlyGoalPrompt, setShowMonthlyGoalPrompt] = useState(() => shouldShowMonthlyGoalPrompt())
+  const [showTomorrowTasksModal, setShowTomorrowTasksModal] = useState(false)
+
+  // Toast state
+  const [showMoveToTomorrowToast, setShowMoveToTomorrowToast] = useState(false)
+
+  // Tomorrow tasks count
+  const [tomorrowTaskCount, setTomorrowTaskCount] = useState(0)
 
   // Achievement animation state
   const [showConfetti, setShowConfetti] = useState(false)
@@ -75,6 +89,12 @@ export function TodayPage() {
       }
     })
   }, [online, fetchWithCache])
+
+  // Fetch tomorrow task count on mount and after relevant updates
+  useEffect(() => {
+    if (!online) return
+    fetchTomorrowTaskCount().then(setTomorrowTaskCount)
+  }, [online, data?.tasks.length])
 
   // Achievement effect when all 3 tasks completed
   useEffect(() => {
@@ -99,6 +119,14 @@ export function TodayPage() {
       setTimeout(() => setShowConfetti(false), 1500)
     }
     await toggleTask(taskId, completed)
+  }
+
+  // Move to tomorrow with toast
+  async function handleMoveToTomorrow(taskId: string): Promise<void> {
+    const success = await moveToTomorrow(taskId)
+    if (success) {
+      setShowMoveToTomorrowToast(true)
+    }
   }
 
   // Moya promotion
@@ -145,6 +173,11 @@ export function TodayPage() {
         lastActiveDate={data.streak.lastActiveDate}
         streakCount={data.streak.count}
       />
+      <MoveToTomorrowToast
+        show={showMoveToTomorrowToast}
+        onClose={() => setShowMoveToTomorrowToast(false)}
+        onViewTomorrowTasks={() => setShowTomorrowTasksModal(true)}
+      />
 
       {/* Achievement animations */}
       {showConfetti && <Confetti />}
@@ -186,9 +219,11 @@ export function TodayPage() {
           onToggle={handleToggleTask}
           onDelete={deleteTask}
           onEdit={editTask}
-          onMoveToTomorrow={moveToTomorrow}
+          onMoveToTomorrow={handleMoveToTomorrow}
           onDemoteToMoya={demoteToMoya}
           onAddTask={() => openAddModal('task')}
+          onOpenTomorrowTasks={() => setShowTomorrowTasksModal(true)}
+          tomorrowTaskCount={tomorrowTaskCount}
           online={online}
         />
 
@@ -211,6 +246,16 @@ export function TodayPage() {
         onAddMoya={addMoya}
         canAddTask={canAddTask}
         initialMode={addModalMode}
+      />
+
+      <TomorrowTasksModal
+        isOpen={showTomorrowTasksModal}
+        onClose={() => {
+          setShowTomorrowTasksModal(false)
+          refresh()
+          fetchTomorrowTaskCount().then(setTomorrowTaskCount)
+        }}
+        todayTaskCount={data.tasks.length}
       />
 
       {showPendingModal && pendingTasks.length > 0 && (

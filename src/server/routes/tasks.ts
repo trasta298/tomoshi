@@ -91,7 +91,7 @@ tasksRoutes.post('/', async (c) => {
 tasksRoutes.patch('/:id', async (c) => {
   const { userId } = c.get('auth')
   const taskId = c.req.param('id')
-  const updates = await c.req.json<{ title?: string; completed?: boolean; date?: string }>()
+  const updates = await c.req.json<{ title?: string; completed?: boolean }>()
 
   // Verify ownership
   const existing = await c.env.DB.prepare('SELECT * FROM tasks WHERE id = ? AND user_id = ?')
@@ -118,10 +118,8 @@ tasksRoutes.patch('/:id', async (c) => {
     values.push(updates.completed ? 1 : 0)
   }
 
-  if (updates.date !== undefined) {
-    fields.push('date = ?')
-    values.push(updates.date)
-  }
+  // Note: date changes are not allowed via PATCH to enforce 3-task limit
+  // Use move-to-today or move-to-tomorrow endpoints instead
 
   if (fields.length === 0) {
     return c.json({ success: false, error: 'No updates provided' }, 400)

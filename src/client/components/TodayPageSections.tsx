@@ -1,8 +1,8 @@
 import { AnimatePresence } from 'framer-motion'
-import { MiniJourney } from './JourneyView'
-import { HabitCard } from './HabitCard'
-import { TaskCard, EmptyTaskSlot } from './TaskCard'
-import { MoyaList } from './MoyaList'
+import { MiniJourney } from './JourneyView.js'
+import { HabitCard } from './HabitCard.js'
+import { TaskCard, EmptyTaskSlot } from './TaskCard.js'
+import { MoyaList } from './MoyaList.js'
 import type { Task, Moya, Habit, HabitTimeWithCheck } from '@shared/types'
 
 // Journey Section
@@ -28,7 +28,11 @@ interface HabitsSectionProps {
   online: boolean
 }
 
-export function HabitsSection({ habits, onToggleCheck, online }: HabitsSectionProps) {
+export function HabitsSection({
+  habits,
+  onToggleCheck,
+  online
+}: HabitsSectionProps) {
   if (habits.length === 0) {
     return null
   }
@@ -62,6 +66,8 @@ interface TasksSectionProps {
   onMoveToTomorrow: (taskId: string) => void
   onDemoteToMoya: (taskId: string) => void
   onAddTask: () => void
+  onOpenTomorrowTasks: () => void
+  tomorrowTaskCount: number
   online: boolean
 }
 
@@ -73,6 +79,8 @@ export function TasksSection({
   onMoveToTomorrow,
   onDemoteToMoya,
   onAddTask,
+  onOpenTomorrowTasks,
+  tomorrowTaskCount,
   online
 }: TasksSectionProps) {
   const allTasksCompleted = tasks.length > 0 && tasks.every((t) => t.completed)
@@ -94,6 +102,7 @@ export function TasksSection({
               onEdit={(newTitle) => online && onEdit(task.id, newTitle)}
               onMoveToTomorrow={online ? () => onMoveToTomorrow(task.id) : undefined}
               onDemoteToMoya={online ? () => onDemoteToMoya(task.id) : undefined}
+              tomorrowTaskCount={tomorrowTaskCount}
             />
           ))}
         </AnimatePresence>
@@ -102,6 +111,22 @@ export function TasksSection({
           <EmptyTaskSlot onClick={onAddTask} disabled={!online} />
         )}
       </div>
+
+      {/* あしたやりたいことをみるリンク */}
+      <button
+        onClick={onOpenTomorrowTasks}
+        className="w-full mt-4 py-2 text-sm flex items-center justify-center gap-2 transition-opacity"
+        style={{
+          color: 'var(--text-secondary)',
+          opacity: tomorrowTaskCount > 0 ? 1 : 0.6
+        }}
+      >
+        <span>📅</span>
+        <span>
+          あしたやりたいことをみる
+          {tomorrowTaskCount > 0 && ` (${tomorrowTaskCount})`}
+        </span>
+      </button>
     </section>
   )
 }

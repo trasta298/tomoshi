@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task } from '@shared/types'
-import { CompleteCheck } from './CompleteCheck'
-import { cardVariants } from '../styles/animations'
+import { CompleteCheck } from './CompleteCheck.js'
+import { cardVariants } from '../styles/animations.js'
 
 interface TaskCardProps {
   task: Task
@@ -11,14 +11,25 @@ interface TaskCardProps {
   onEdit?: (newTitle: string) => void
   onMoveToTomorrow?: () => void
   onDemoteToMoya?: () => void
+  tomorrowTaskCount?: number
 }
 
-export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, onDemoteToMoya }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onToggle,
+  onDelete,
+  onEdit,
+  onMoveToTomorrow,
+  onDemoteToMoya,
+  tomorrowTaskCount
+}: TaskCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
+  const [menuPosition, setMenuPosition] = useState<'bottom' | 'top'>('bottom')
   const longPressTimer = useRef<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -71,6 +82,18 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
     }
   }
 
+  const handleMenuToggle = () => {
+    if (!showMenu && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect()
+      const bottomNav = document.querySelector('.bottom-nav')
+      const footerHeight = bottomNav?.getBoundingClientRect().height ?? 0
+      const spaceBelow = window.innerHeight - rect.bottom - footerHeight
+      const menuHeight = 200 // 推定メニュー高さ
+      setMenuPosition(spaceBelow < menuHeight ? 'top' : 'bottom')
+    }
+    setShowMenu(!showMenu)
+  }
+
   if (editing) {
     return (
       <div className="card flex items-center gap-3">
@@ -110,47 +133,54 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
       initial="hidden"
       animate="visible"
       exit="exit"
-      whileTap="tap"
       className="card flex items-center gap-3 relative"
       style={{
         background: task.completed ? 'var(--mint)' : 'var(--bg-card)',
         transition: 'background 0.3s ease'
       }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseUp={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
     >
-      <button
-        onClick={handleToggle}
-        className="checkbox-custom-wrapper relative"
-        aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
+      {/* タップ可能な領域（チェックボックスとタイトル） */}
+      <motion.div
+        whileTap={{ scale: 0.98 }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={handleTouchEnd}
+        className="flex items-center gap-3 flex-1"
       >
-        {task.completed ? (
-          <CompleteCheck size="sm" sparkle={true} />
-        ) : (
-          <div className="checkbox-custom" />
-        )}
-      </button>
+        <button
+          onClick={handleToggle}
+          className="checkbox-custom-wrapper relative"
+          aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
+        >
+          {task.completed ? (
+            <CompleteCheck size="sm" sparkle={true} />
+          ) : (
+            <div className="checkbox-custom" />
+          )}
+        </button>
 
-      <span
-        className="flex-1 cursor-pointer select-none transition-colors"
-        onClick={handleToggle}
-        style={{
-          color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
-          opacity: task.completed ? 0.6 : 1,
-          textDecoration: task.completed ? 'line-through' : 'none'
-        }}
-      >
-        {task.title}
-      </span>
+        <span
+          className="flex-1 cursor-pointer select-none transition-colors"
+          onClick={handleToggle}
+          style={{
+            color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
+            opacity: task.completed ? 0.6 : 1,
+            textDecoration: task.completed ? 'line-through' : 'none'
+          }}
+        >
+          {task.title}
+        </span>
+      </motion.div>
 
+      {/* 三点リーダーボタン（独立した領域） */}
       <button
+        ref={menuButtonRef}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
         onPointerDownCapture={(e) => e.stopPropagation()}
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={handleMenuToggle}
         className="p-2 opacity-50 hover:opacity-100 transition-opacity"
         style={{ touchAction: 'manipulation' }}
         aria-label="More options"
@@ -182,11 +212,13 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
               }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              initial={{ opacity: 0, scale: 0.9, y: menuPosition === 'bottom' ? 10 : -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              exit={{ opacity: 0, scale: 0.9, y: menuPosition === 'bottom' ? 10 : -10 }}
               transition={{ type: 'spring', duration: 0.3 }}
-              className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg overflow-hidden"
+              className={`absolute right-0 z-50 rounded-xl shadow-lg overflow-hidden ${
+                menuPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+              }`}
               style={{ background: 'var(--bg-card)' }}
             >
               <button
@@ -196,7 +228,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
                 <span>✏️</span>
                 <span>編集</span>
               </button>
-              {onMoveToTomorrow && !task.completed && (
+              {onMoveToTomorrow && !task.completed && (tomorrowTaskCount ?? 0) < 3 && (
                 <button
                   onClick={() => {
                     setShowMenu(false)
@@ -205,7 +237,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit, onMoveToTomorrow, o
                   className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-[var(--bg-primary)]"
                 >
                   <span>📅</span>
-                  <span>明日へ</span>
+                  <span>あしたへ</span>
                 </button>
               )}
               {onDemoteToMoya && !task.completed && (

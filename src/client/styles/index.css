@@ -245,31 +245,6 @@ h3,
   overflow: hidden;
 }
 
-/* Animations */
-@keyframes confetti {
-  0% {
-    transform: translateY(0) rotate(0) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateY(-100px) rotate(360deg) scale(0.5);
-    opacity: 0;
-  }
-}
-
-/* Confetti container */
-.confetti-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1000;
-  overflow: hidden;
-}
-
 .confetti-piece {
   position: absolute;
   width: 10px;
@@ -460,6 +435,14 @@ textarea {
   color: var(--text-primary);
   border-radius: 12px;
   padding: 12px 16px;
+}
+
+/* Large input field (for modals) */
+.input-field {
+  width: 100%;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-primary);
 }
 
 /* Time input dark mode fix */

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Toast } from './Toast.js'
 
 interface ShieldToastProps {
   shieldConsumedAt?: number
@@ -31,20 +32,13 @@ export function ShieldToast({ shieldConsumedAt }: ShieldToastProps) {
     return () => clearTimeout(timer)
   }, [shieldConsumedAt])
 
-  if (!visible) return null
-
   return (
-    <div
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in"
-      onClick={() => setVisible(false)}
-    >
-      <div
-        className="px-6 py-3 rounded-2xl shadow-lg flex items-center gap-2"
-        style={{ background: 'var(--lemon)' }}
-      >
-        <span className="text-2xl">🛡️</span>
-        <span className="heading">炎が守られた</span>
-      </div>
-    </div>
+    <Toast
+      visible={visible}
+      onClose={() => setVisible(false)}
+      emoji="🛡️"
+      message="炎が守られた"
+      background="var(--lemon)"
+    />
   )
 }
