@@ -219,7 +219,7 @@ export function TaskCard({
               className={`absolute right-0 z-50 rounded-xl shadow-lg overflow-hidden ${
                 menuPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
               }`}
-              style={{ background: 'var(--bg-card)' }}
+              style={{ background: 'var(--bg-card)', maxWidth: 'calc(100vw - 32px)' }}
             >
               <button
                 onClick={handleEdit}

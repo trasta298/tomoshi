@@ -24,7 +24,7 @@ export function TimeChipEditable({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <input
           type="time"
           value={editValue}
@@ -35,10 +35,10 @@ export function TimeChipEditable({
           style={{ background: 'var(--bg-primary)' }}
           autoFocus
         />
-        <button onClick={handleSave} className="text-sm">
+        <button onClick={handleSave} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-base">
           ✓
         </button>
-        <button onClick={() => setEditing(false)} className="text-sm">
+        <button onClick={() => setEditing(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-base opacity-50">
           ×
         </button>
       </div>
