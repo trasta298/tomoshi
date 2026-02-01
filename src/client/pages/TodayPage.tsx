@@ -271,7 +271,12 @@ export function TodayPage() {
       )}
 
       {showMonthlyGoalPrompt && !showPendingModal && (
-        <MonthlyGoalPrompt onClose={() => setShowMonthlyGoalPrompt(false)} />
+        <MonthlyGoalPrompt
+          onClose={() => {
+            setShowMonthlyGoalPrompt(false)
+            refresh()
+          }}
+        />
       )}
     </>
   )
