@@ -140,12 +140,20 @@ export async function confirmPendingDays(db: D1Database, userId: string): Promis
 
 /**
  * Get today's complete data including tasks, habits, moyas, and streak info.
+ * Streak is calculated once per day on app startup based on yesterday's achievement.
  */
 export async function getTodayData(db: D1Database, userId: string): Promise<TodayData> {
   const today = getTodayDate()
 
   await confirmPendingDays(db, userId)
 
+  // Calculate streak if not yet done today
+  const userBefore = await repo.getUserStreakInfo(db, userId)
+  if (userBefore?.streak_calculated_date !== today) {
+    await calculateAndUpdateStreak(db, userId, today)
+  }
+
+  // Fetch all data (user re-fetched to get updated streak)
   const [user, userSettings, tasks, habits, moyas, lastActiveDate] = await Promise.all([
     repo.getUserStreakInfo(db, userId),
     repo.getUserCharacter(db, userId),
@@ -243,13 +251,13 @@ export async function getDayDetails(
 }
 
 /**
- * Update daily log and optionally calculate streak.
+ * Update daily log (streak is calculated on app startup, not here).
  */
 export async function updateLogAndStreak(
   db: D1Database,
   userId: string,
   date: string,
-  shouldUpdateStreak: boolean
+  _shouldUpdateStreak: boolean
 ): Promise<LogUpdateResult> {
   const { achieved } = await updateDailyLog(db, userId, date)
 
@@ -257,18 +265,13 @@ export async function updateLogAndStreak(
   const tasksCompleted = logStats?.tasks_completed ?? 0
   const habitsCompleted = logStats?.habits_completed ?? 0
 
-  let streakUpdate: StreakUpdateResult | null = null
-
-  if (shouldUpdateStreak && achieved) {
-    streakUpdate = await calculateAndUpdateStreak(db, userId)
-  }
-
+  // Streak update is now handled by getTodayData on app startup
   return {
     date,
     tasks_completed: tasksCompleted,
     habits_completed: habitsCompleted,
     achieved,
-    streakUpdate
+    streakUpdate: null
   }
 }
 
@@ -351,7 +354,8 @@ async function updateDailyLogHabits(
 
 async function calculateAndUpdateStreak(
   db: D1Database,
-  userId: string
+  userId: string,
+  today: string
 ): Promise<StreakUpdateResult> {
   const user = await db
     .prepare('SELECT streak_count, streak_shields FROM users WHERE id = ?')
@@ -366,13 +370,24 @@ async function calculateAndUpdateStreak(
 
   const streakUpdate = calculateStreakUpdate(currentStreak, currentShields, yesterdayAchieved, true)
 
-  await repo.updateUserStreak(
-    db,
-    userId,
-    streakUpdate.newStreakCount,
-    streakUpdate.newShields,
-    streakUpdate.shieldConsumed ? streakUpdate.shieldConsumedAt : undefined
-  )
+  // Update streak and mark today as calculated
+  await db
+    .prepare(
+      `UPDATE users SET
+        streak_count = ?,
+        streak_shields = ?,
+        streak_calculated_date = ?,
+        shield_consumed_at = ?
+      WHERE id = ?`
+    )
+    .bind(
+      streakUpdate.newStreakCount,
+      streakUpdate.newShields,
+      today,
+      streakUpdate.shieldConsumed ? streakUpdate.shieldConsumedAt : null,
+      userId
+    )
+    .run()
 
   return streakUpdate
 }

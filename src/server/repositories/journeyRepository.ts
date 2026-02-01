@@ -303,11 +303,11 @@ export function createInsertDailyLogHabitStatement(
 export async function getUserStreakInfo(
   db: D1Database,
   userId: string
-): Promise<Pick<DbUser, 'streak_count' | 'streak_shields' | 'shield_consumed_at' | 'monthly_goal'> | null> {
+): Promise<Pick<DbUser, 'streak_count' | 'streak_shields' | 'shield_consumed_at' | 'monthly_goal' | 'streak_calculated_date'> | null> {
   return db
-    .prepare('SELECT streak_count, streak_shields, shield_consumed_at, monthly_goal FROM users WHERE id = ?')
+    .prepare('SELECT streak_count, streak_shields, shield_consumed_at, monthly_goal, streak_calculated_date FROM users WHERE id = ?')
     .bind(userId)
-    .first<Pick<DbUser, 'streak_count' | 'streak_shields' | 'shield_consumed_at' | 'monthly_goal'>>()
+    .first<Pick<DbUser, 'streak_count' | 'streak_shields' | 'shield_consumed_at' | 'monthly_goal' | 'streak_calculated_date'>>()
 }
 
 export async function getUserCharacter(

@@ -82,6 +82,7 @@ export interface DbUser {
   streak_count: number
   streak_shields: number
   shield_consumed_at: number | null
+  streak_calculated_date: string | null
 }
 
 export interface DbDailyLog {
