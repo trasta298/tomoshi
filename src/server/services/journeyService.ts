@@ -2,6 +2,8 @@ import {
   getLastNDays,
   getTodayDate,
   getYesterdayDate,
+  getDateRange,
+  parseDate,
   generateId,
   calculateStreakUpdate,
   isDayAchieved
@@ -146,33 +148,29 @@ export async function getTodayData(db: D1Database, userId: string): Promise<Toda
   const today = getTodayDate()
 
   await confirmPendingDays(db, userId)
-
-  // Calculate streak if not yet done today
-  const userBefore = await repo.getUserStreakInfo(db, userId)
-  if (userBefore?.streak_calculated_date !== today) {
-    await calculateAndUpdateStreak(db, userId, today)
-  }
+  await ensureStreakCalculatedToday(db, userId)
 
   // Fetch all data (user re-fetched to get updated streak)
-  const [user, userSettings, tasks, habits, moyas, lastActiveDate] = await Promise.all([
+  const [user, userSettings, tasks, habits, moyas, lastActiveDate, todayLog] = await Promise.all([
     repo.getUserStreakInfo(db, userId),
     repo.getUserCharacter(db, userId),
     repo.getTasksByDate(db, userId, today),
     repo.getHabitsWithTimesAndChecks(db, userId, today),
     repo.getRecentMoyas(db, userId, Date.now() - 30 * 24 * 60 * 60 * 1000),
-    repo.getLastActiveDate(db, userId)
+    repo.getLastActiveDate(db, userId),
+    repo.getDailyLogStats(db, userId, today)
   ])
 
-  const streakCount = user?.streak_count ?? 0
+  const displayStreak = computeDisplayStreak(user?.streak_count ?? 0, todayLog)
 
   return {
     tasks: transformTasks(tasks),
     habits: transformHabits(habits),
     moyas: transformMoyas(moyas),
     streak: {
-      count: streakCount,
+      count: displayStreak,
       shields: user?.streak_shields ?? 0,
-      level: getFlameLevel(streakCount),
+      level: getFlameLevel(displayStreak),
       shieldConsumedAt: user?.shield_consumed_at ?? undefined,
       lastActiveDate
     },
@@ -182,15 +180,29 @@ export async function getTodayData(db: D1Database, userId: string): Promise<Toda
 }
 
 /**
- * Get journey history for the last 30 days.
+ * Get journey history for the last 30 days, including display streak.
  */
-export async function getJourneyHistory(db: D1Database, userId: string): Promise<JourneyDay[]> {
+export async function getJourneyHistory(
+  db: D1Database,
+  userId: string
+): Promise<{ days: JourneyDay[]; streak: { count: number; shields: number } }> {
+  const today = getTodayDate()
   const days = getLastNDays(30)
-  const logs = await repo.getDailyLogsByDateRange(db, userId, days[0])
+
+  // confirmPendingDays is NOT called here (concurrent INSERT prevention).
+  // Missing daily_logs are safely treated as "not achieved".
+  await ensureStreakCalculatedToday(db, userId)
+
+  const [logs, user] = await Promise.all([
+    repo.getDailyLogsByDateRange(db, userId, days[0]),
+    repo.getUserStreakInfo(db, userId)
+  ])
 
   const logsMap = new Map(logs.map((log) => [log.date, log]))
 
-  return days.map((date) => {
+  const displayStreak = computeDisplayStreak(user?.streak_count ?? 0, logsMap.get(today) ?? null)
+
+  const journeyDays = days.map((date) => {
     const log = logsMap.get(date)
     if (log) {
       return {
@@ -211,6 +223,14 @@ export async function getJourneyHistory(db: D1Database, userId: string): Promise
       habits_total: 0
     }
   })
+
+  return {
+    days: journeyDays,
+    streak: {
+      count: displayStreak,
+      shields: user?.streak_shields ?? 0
+    }
+  }
 }
 
 /**
@@ -256,8 +276,7 @@ export async function getDayDetails(
 export async function updateLogAndStreak(
   db: D1Database,
   userId: string,
-  date: string,
-  _shouldUpdateStreak: boolean
+  date: string
 ): Promise<LogUpdateResult> {
   const { achieved } = await updateDailyLog(db, userId, date)
 
@@ -276,6 +295,24 @@ export async function updateLogAndStreak(
 }
 
 // ==================== Private Helpers ====================
+
+function computeDisplayStreak(
+  baseStreak: number,
+  todayLog: { tasks_total: number; tasks_completed: number; habits_total: number; habits_completed: number } | null
+): number {
+  const todayAchieved = todayLog
+    ? isDayAchieved(todayLog.tasks_total, todayLog.tasks_completed, todayLog.habits_total, todayLog.habits_completed)
+    : false
+  return baseStreak + (todayAchieved ? 1 : 0)
+}
+
+async function ensureStreakCalculatedToday(db: D1Database, userId: string): Promise<void> {
+  const today = getTodayDate()
+  const user = await repo.getUserStreakInfo(db, userId)
+  if (user?.streak_calculated_date !== today) {
+    await calculateAndUpdateStreak(db, userId, today)
+  }
+}
 
 async function upsertDailyLog(
   db: D1Database,
@@ -356,40 +393,64 @@ async function calculateAndUpdateStreak(
   db: D1Database,
   userId: string,
   today: string
-): Promise<StreakUpdateResult> {
+): Promise<void> {
   const user = await db
-    .prepare('SELECT streak_count, streak_shields FROM users WHERE id = ?')
+    .prepare('SELECT streak_count, streak_shields, streak_calculated_date FROM users WHERE id = ?')
     .bind(userId)
-    .first<{ streak_count: number; streak_shields: number }>()
+    .first<{ streak_count: number; streak_shields: number; streak_calculated_date: string | null }>()
 
-  const currentStreak = user?.streak_count ?? 0
-  const currentShields = user?.streak_shields ?? 0
-
+  let currentStreak = user?.streak_count ?? 0
+  let currentShields = user?.streak_shields ?? 0
+  let shieldConsumedAt: number | null = null
+  const lastCalc = user?.streak_calculated_date
   const yesterday = getYesterdayDate()
-  const yesterdayAchieved = await repo.getYesterdayAchieved(db, userId, yesterday)
 
-  const streakUpdate = calculateStreakUpdate(currentStreak, currentShields, yesterdayAchieved, true)
+  // Determine days to process: from lastCalc+1 through yesterday
+  let daysToProcess: string[]
+  if (!lastCalc) {
+    // New user: process yesterday only
+    daysToProcess = [yesterday]
+  } else {
+    const lastCalcDate = parseDate(lastCalc)
+    const nextDay = new Date(lastCalcDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    const nextDayStr = nextDay.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+    if (nextDayStr > yesterday) {
+      daysToProcess = []
+    } else {
+      daysToProcess = getDateRange(nextDayStr, yesterday)
+    }
+  }
 
-  // Update streak and mark today as calculated
-  await db
-    .prepare(
-      `UPDATE users SET
-        streak_count = ?,
-        streak_shields = ?,
-        streak_calculated_date = ?,
-        shield_consumed_at = ?
-      WHERE id = ?`
-    )
-    .bind(
-      streakUpdate.newStreakCount,
-      streakUpdate.newShields,
-      today,
-      streakUpdate.shieldConsumed ? streakUpdate.shieldConsumedAt : null,
-      userId
-    )
-    .run()
+  if (daysToProcess.length === 0) {
+    // No days to process but update streak_calculated_date
+    await db.prepare('UPDATE users SET streak_calculated_date = ? WHERE id = ? AND (streak_calculated_date IS NULL OR streak_calculated_date != ?)')
+      .bind(today, userId, today).run()
+    return
+  }
 
-  return streakUpdate
+  // Batch fetch daily_logs for the range
+  const logs = await repo.getDailyLogsByDateRange(db, userId, daysToProcess[0])
+  const logsMap = new Map(logs.map(log => [log.date, log]))
+
+  // Process each day sequentially
+  for (const day of daysToProcess) {
+    const log = logsMap.get(day)
+    const dayAchieved = log ? !!log.achieved : false
+    const update = calculateStreakUpdate(currentStreak, currentShields, dayAchieved)
+    currentStreak = update.newStreakCount
+    currentShields = update.newShields
+    if (update.shieldConsumed) {
+      shieldConsumedAt = update.shieldConsumedAt ?? null
+    }
+    // No early break: streak can restart after reset
+  }
+
+  // CAS update to prevent race conditions
+  await db.prepare(`UPDATE users SET
+    streak_count = ?, streak_shields = ?, streak_calculated_date = ?, shield_consumed_at = ?
+    WHERE id = ? AND (streak_calculated_date IS NULL OR streak_calculated_date != ?)`)
+    .bind(currentStreak, currentShields, today, shieldConsumedAt, userId, today).run()
 }
 
 // ==================== Transform Functions ====================

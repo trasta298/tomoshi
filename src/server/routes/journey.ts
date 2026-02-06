@@ -18,13 +18,13 @@ journeyRoutes.get('/today', async (c) => {
   return c.json({ success: true, data: todayData })
 })
 
-// Get journey (last 30 days)
+// Get journey (last 30 days) with streak info
 journeyRoutes.get('/history', async (c) => {
   const { userId } = c.get('auth')
 
-  const journey = await journeyService.getJourneyHistory(c.env.DB, userId)
+  const result = await journeyService.getJourneyHistory(c.env.DB, userId)
 
-  return c.json({ success: true, data: journey })
+  return c.json({ success: true, data: result.days, streak: result.streak })
 })
 
 // Get specific day's details
@@ -42,11 +42,9 @@ journeyRoutes.post('/log', async (c) => {
   const { userId } = c.get('auth')
 
   let date: string | undefined
-  let updateStreak = false
   try {
-    const body = await c.req.json<{ date?: string; updateStreak?: boolean }>()
+    const body = await c.req.json<{ date?: string }>()
     date = body.date
-    updateStreak = body.updateStreak ?? false
   } catch {
     // Empty body is valid - date is optional
   }
@@ -54,7 +52,7 @@ journeyRoutes.post('/log', async (c) => {
   const logDate = date ?? getTodayDate()
 
   try {
-    const result = await journeyService.updateLogAndStreak(c.env.DB, userId, logDate, updateStreak)
+    const result = await journeyService.updateLogAndStreak(c.env.DB, userId, logDate)
 
     return c.json({
       success: true,

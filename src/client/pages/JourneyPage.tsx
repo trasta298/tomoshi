@@ -2,16 +2,12 @@ import { useState, useEffect } from 'react'
 import { JourneyView } from '../components/JourneyView'
 import { ModalWrapper } from '../components/ModalWrapper'
 import { useDataCache } from '../hooks/useDataCache'
-import type { JourneyDay, User } from '@shared/types'
+import type { JourneyDay } from '@shared/types'
 
 interface JourneyResponse {
   success: boolean
   data?: JourneyDay[]
-}
-
-interface UserResponse {
-  success: boolean
-  user?: User
+  streak?: { count: number; shields: number }
 }
 
 interface DayDetailsResponse {
@@ -41,17 +37,16 @@ export function JourneyPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [journeyJson, userJson, settingsJson] = await Promise.all([
+        const [journeyJson, settingsJson] = await Promise.all([
           fetchWithCache<JourneyResponse>('/api/journey/history'),
-          fetchWithCache<UserResponse>('/api/auth/me'),
           fetchWithCache<SettingsResponse>('/api/settings')
         ])
 
-        if (journeyJson.success && userJson.success && journeyJson.data) {
+        if (journeyJson.success && journeyJson.data) {
           setData({
             journey: journeyJson.data,
-            streakCount: userJson.user?.streak_count || 0,
-            streakShields: userJson.user?.streak_shields || 0,
+            streakCount: journeyJson.streak?.count ?? 0,
+            streakShields: journeyJson.streak?.shields ?? 0,
             characterId: settingsJson.data?.character_id || 'default'
           })
         }
@@ -164,17 +159,56 @@ export function JourneyPage() {
       </section>
 
       {/* Selected day details */}
-      {selectedDay && <DayDetailModal day={selectedDay} onClose={() => setSelectedDay(null)} />}
+      {selectedDay && (
+        <DayDetailModal day={selectedDay} journey={data.journey} onClose={() => setSelectedDay(null)} />
+      )}
     </div>
   )
 }
 
 interface DayDetailModalProps {
   day: JourneyDay
+  journey: JourneyDay[]
   onClose: () => void
 }
 
-function DayDetailModal({ day, onClose }: DayDetailModalProps) {
+function getNonAchievedMessage(
+  day: JourneyDay,
+  journey: JourneyDay[]
+): { emoji: string; heading: string; sub: string } {
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+  const tasksTotal = day.tasks_total ?? 0
+  const habitsTotal = day.habits_total ?? 0
+
+  // Today: encouraging
+  if (day.date === today) {
+    return { emoji: '🔥', heading: '今日はまだこれから！', sub: '一歩ずつ進もう' }
+  }
+
+  // No tasks or habits set that day
+  if (tasksTotal === 0 && habitsTotal === 0) {
+    return { emoji: '☁️', heading: 'のんびりした日', sub: 'こういう日も大事' }
+  }
+
+  // Previous day was achieved (streak broke here)
+  const dayIndex = journey.findIndex((d) => d.date === day.date)
+  const prevDay = dayIndex > 0 ? journey[dayIndex - 1] : null
+  if (prevDay?.achieved) {
+    return { emoji: '🌱', heading: 'また新しい旅が始まるね', sub: '大丈夫、いつでも始められるよ' }
+  }
+
+  // Some progress made
+  const tasksCompleted = day.tasks_completed ?? 0
+  const habitsCompleted = day.habits_completed ?? 0
+  if (tasksCompleted > 0 || habitsCompleted > 0) {
+    return { emoji: '🌿', heading: 'あと少しだったね', sub: 'やったことはちゃんと残ってるよ' }
+  }
+
+  // Default
+  return { emoji: '🌱', heading: 'また歩き出そう', sub: '大丈夫、いつでも始められるよ' }
+}
+
+function DayDetailModal({ day, journey, onClose }: DayDetailModalProps) {
   const [details, setDetails] = useState<{
     tasks: { title: string; completed: boolean }[]
     habitChecks: { title: string; time: string; completed: boolean }[]
@@ -214,13 +248,18 @@ function DayDetailModal({ day, onClose }: DayDetailModalProps) {
             <p className="heading mt-2">達成！</p>
           </div>
         ) : (
-          <div className="text-center mb-4">
-            <span className="text-4xl">🌱</span>
-            <p className="heading mt-2">また歩き出そう</p>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              大丈夫、いつでも始められるよ
-            </p>
-          </div>
+          (() => {
+            const msg = getNonAchievedMessage(day, journey)
+            return (
+              <div className="text-center mb-4">
+                <span className="text-4xl">{msg.emoji}</span>
+                <p className="heading mt-2">{msg.heading}</p>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  {msg.sub}
+                </p>
+              </div>
+            )
+          })()
         )}
 
         {details && (

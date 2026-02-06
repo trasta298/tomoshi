@@ -44,6 +44,22 @@ export function getLastNDays(n: number, timezone = 'Asia/Tokyo'): string[] {
   return days
 }
 
+// Generate date range from startDate to endDate (inclusive, YYYY-MM-DD format)
+// Counter-based loop to avoid Date mutation bugs (each iteration creates a fresh Date)
+export function getDateRange(startDate: string, endDate: string, timezone = 'Asia/Tokyo'): string[] {
+  const dates: string[] = []
+  const start = parseDate(startDate)
+  const end = parseDate(endDate)
+  const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  if (days < 0) return []
+  for (let i = 0; i <= days; i++) {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    dates.push(d.toLocaleDateString('sv-SE', { timeZone: timezone }))
+  }
+  return dates
+}
+
 // Session token generation
 export function generateSessionToken(): string {
   const array = new Uint8Array(32)
@@ -110,23 +126,14 @@ export interface StreakUpdate {
 // Maximum shields a user can have
 export const MAX_SHIELDS = 3
 
-// Calculate streak update based on previous day's achievement
+// Calculate base streak update based on previous day's achievement.
+// Returns the "base streak" = consecutive days achieved through yesterday.
+// Display streak = base + (todayAchieved ? 1 : 0), computed at API response time.
 export function calculateStreakUpdate(
   currentStreak: number,
   currentShields: number,
-  yesterdayAchieved: boolean,
-  todayAchieved: boolean
+  yesterdayAchieved: boolean
 ): StreakUpdate {
-  // If today not achieved yet, no update
-  if (!todayAchieved) {
-    return {
-      newStreakCount: currentStreak,
-      newShields: currentShields,
-      shieldConsumed: false,
-      shieldAwarded: false
-    }
-  }
-
   // If yesterday was achieved, continue streak
   if (yesterdayAchieved) {
     const newStreak = currentStreak + 1
@@ -156,9 +163,9 @@ export function calculateStreakUpdate(
     }
   }
 
-  // No shield, streak resets to 1
+  // No shield, streak resets to 0
   return {
-    newStreakCount: 1,
+    newStreakCount: 0,
     newShields: currentShields,
     shieldConsumed: false,
     shieldAwarded: false
